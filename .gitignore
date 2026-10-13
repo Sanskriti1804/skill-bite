@@ -1,0 +1,4 @@
+# Secrets. No application env files exist yet.
+.env
+.env.*
+!.env.example
