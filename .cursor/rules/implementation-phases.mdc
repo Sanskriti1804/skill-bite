@@ -66,4 +66,4 @@ In-scope code is implemented, acceptance criteria were checked, relevant tests w
 
 State the phase objective and scope, what was reused, commands run and their results, outstanding issues, completion status, and the next phase with its prerequisites.
 
-End every response that changes files with a change summary. List each created, modified, or deleted file and one line on what changed in it. Do not omit a file because the edit was small. If no file changed, say that.
+End the reply with the final response format in `AGENTS.md`: Files Changed, Changes Per File, How to Test, Troubleshooting, and Verification Results. If no file changed, say that.

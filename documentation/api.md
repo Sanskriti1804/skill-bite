@@ -1,6 +1,6 @@
 # API contract
 
-**Status:** `GET /health` and the unknown-route and error bodies below are implemented in `backend/src/app.ts`. Every `/api/v1` business path is required by `PRD.md` and is not built.
+**Status:** `GET /health` and every `/api/v1` path in this file are implemented in `backend/src/app.ts` and `backend/src/routes.ts`. Open decisions at the end of this file are still open.
 
 **Sources:** `documentation/PRD.md`, `documentation/architecture.md`, `documentation/database.md`, ADR 0002. This file does not add features those sources leave open.
 
@@ -142,9 +142,9 @@ There is no analytics route. Metrics are OD-09. Do not return placeholder number
 
 ## Authentication and authorization
 
-Planned. Not implemented.
+Implemented in `backend/src/routes.ts` and `backend/src/security.ts`.
 
-- Protected routes require a short-lived access token. The server checks signature, issuer, audience, expiry, and the session. Access tokens are not stored (ERD section 2.4).
+- Protected routes require a short-lived access token. The server checks signature, issuer `skillbite`, audience `skillbite-api`, expiry, and the session. Access tokens are not stored.
 - Login and refresh establish refresh state. Refresh tokens are stored only as hashes, rotate on use, and reuse revokes the token family or session. Logout revokes the session and its refresh tokens.
 - The access token must not be placed in a URL. The Google client secret, database URL, password-hash parameters, and push credentials are server environment values. They are not response fields.
 - Authorization uses the stored role and `account_status`. Hiding a screen is not authorization. A creator may change only owned content. Admin routes require the Admin role. Progress, bookmarks, notifications, preferences, and devices are readable only by that `user_id`.
@@ -152,7 +152,7 @@ Planned. Not implemented.
 
 ## Pagination, filtering, and idempotency
 
-No list response is implemented, and no page size is approved. Do not invent a page size or a cursor format. These planned lists must paginate before they can return an unbounded table: `GET /api/v1/content`, `GET /api/v1/admin/users`, `GET /api/v1/me/progress`, `GET /api/v1/me/bookmarks`, `GET /api/v1/notifications`, `GET /api/v1/admin/audit`.
+These lists return at most 20 rows and include `limit`: `GET /api/v1/content`, `GET /api/v1/admin/users`, `GET /api/v1/me/progress`, `GET /api/v1/me/bookmarks`, `GET /api/v1/notifications`, `GET /api/v1/admin/audit`. There is no cursor. A later page needs an approved cursor format.
 
 Filtering that is already decided:
 
@@ -194,14 +194,24 @@ Loaded today by `backend/src/config.ts`:
 | `PORT` | Yes | Integer from 1 to 65535 |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error`. Default `info` |
 
-Not loaded yet. Required before the feature is implemented. Names are not fixed in code, and values stay in the server environment, never in a client bundle or a response:
+Also loaded by `backend/src/config.ts`. Values stay in the server environment:
 
-- Database URL.
-- Google audience (client id) used to check the identity token, and the Google client secret if the chosen Google flow needs it.
-- Password-hash parameters and token lifetimes.
-- Email delivery credentials.
-- Push credentials, if a provider is selected.
-- Object-storage credentials for production media.
+| Variable | Required | Values |
+|---|---|---|
+| `DATABASE_URL` | For `/api/v1` | PostgreSQL URL. Health works without it. |
+| `TOKEN_SIGNING_SECRET` | For `/api/v1` | At least 16 characters. |
+| `ACCESS_TOKEN_TTL_SECONDS` | No | Default 900. |
+| `REFRESH_TOKEN_TTL_SECONDS` | No | Default 1209600. |
+| `SESSION_TTL_SECONDS` | No | Default 1209600. |
+| `AUTH_TOKEN_TTL_SECONDS` | No | Default 3600. |
+| `ARGON2_MEMORY_COST` | No | Default 19456. |
+| `ARGON2_TIME_COST` | No | Default 2. |
+| `ARGON2_PARALLELISM` | No | Default 1. |
+| `GOOGLE_CLIENT_ID` | For live Google sign-in | Audience of the identity token. Empty means Google sign-in returns 401. |
+| `MEDIA_ROOT` | No | Default `./var/media`. |
+| `PUSH_TOKEN_KEY` | For device registration | At least 16 characters. Encrypts stored device tokens. |
+
+Email delivery credentials and production object-storage credentials are not loaded. Those providers are not chosen. The Google identity-token check does not use a client secret.
 
 ## Privacy and failure handling
 

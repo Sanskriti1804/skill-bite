@@ -30,7 +30,16 @@ When the user asks for a numbered implementation phase, follow `.cursor/rules/im
 - Account status is `ACTIVE`, `SUSPENDED`, or `DEACTIVATED`. Children under eight require parental consent. Do not add other age limits.
 - Do not add account recovery that reconnects progress after a new registration. Password recovery stays. Do not invent a retention period. Deleted content stays recoverable by the admin.
 - Do not claim tests passed or that the project is production-ready unless you ran the check and saw the result.
-- When files change, end the reply with a summary that names every created, modified, or deleted file and what changed in it.
+
+## Final response
+
+After every implementation task, end the reply with the sections below, in this order. This applies to a small edit and to a numbered phase. A numbered phase also states its objective, what was reused, completion status, and the next phase with its prerequisites. Do not omit a file because the edit was small. Do not claim a check passed unless it was run. Use the project's real commands and paths.
+
+1. **Files Changed.** Every created, modified, or deleted file. If nothing changed, say so.
+2. **Changes Per File.** What changed in each file and why.
+3. **How to Test.** Steps, exact commands, prerequisites, and expected results.
+4. **Troubleshooting.** Likely errors, their causes, and the specific fix.
+5. **Verification Results.** Checks that were run and whether each passed or failed. Name anything not tested, unresolved, or blocked.
 
 ## How to change the repo
 
