@@ -220,6 +220,7 @@ test("migration, constraints, and API", async (t) => {
     const token = login.body.accessToken;
     assert.equal((await json(base, "PATCH", "/api/v1/me/role", { role: "ADMIN" }, token)).status, 400);
     assert.equal((await json(base, "PATCH", "/api/v1/me/role", { role: "USER" }, token)).status, 200);
+    assert.equal((await json(base, "POST", "/api/v1/videos", { title: "Nope" }, token)).status, 403);
     const contentCount = await prisma.content.count({ where: { creator: { emailNormalized: "ada@example.com" } } });
     assert.equal((await json(base, "PATCH", "/api/v1/me/role", { role: "CREATOR" }, token)).status, 200);
     assert.equal(await prisma.content.count({ where: { creator: { emailNormalized: "ada@example.com" } } }), contentCount);
@@ -238,6 +239,7 @@ test("migration, constraints, and API", async (t) => {
     const ada = await prisma.appUser.findUniqueOrThrow({ where: { emailNormalized: "ada@example.com" } });
     assert.equal((await json(base, "PATCH", `/api/v1/admin/users/${ada.userId}/status`, { accountStatus: "SUSPENDED" }, admin.body.accessToken)).status, 200);
     assert.equal((await json(base, "POST", "/api/v1/auth/login", { email: "ada@example.com", password: "password1" })).status, 403);
+    assert.equal((await json(base, "POST", "/api/v1/auth/refresh", { refreshToken: login.body.refreshToken })).status, 403);
     captured.length = 0;
     await json(base, "POST", "/api/v1/auth/password-reset", { email: "ada@example.com" });
     const reset = await json(base, "POST", "/api/v1/auth/password-reset/confirm", { token: captured.at(-1)?.token, password: "password2" });
@@ -300,6 +302,9 @@ test("migration, constraints, and API", async (t) => {
     assert.equal((await json(base, "POST", `/api/v1/modules/${module.body.moduleId}/lessons`, { title: "Two", position: 1, videoContentId: videoB.body.contentId }, token)).status, 409);
     assert.equal((await json(base, "POST", `/api/v1/modules/${module.body.moduleId}/lessons`, { title: "Two", position: 2, videoContentId: contentId }, token)).status, 409);
     assert.equal((await json(base, "POST", `/api/v1/modules/${module.body.moduleId}/lessons`, { title: "Two", position: 2, videoContentId: videoB.body.contentId }, token)).status, 201);
+    assert.equal((await json(base, "POST", `/api/v1/courses/${course.body.contentId}/publish`, undefined, token)).status, 400);
+    await json(base, "PATCH", `/api/v1/videos/${videoB.body.contentId}`, { description: "Second video", keywords: "second", sources: "notes" }, token);
+    await prisma.contentTag.create({ data: { contentId: videoB.body.contentId, tagId: tag.body.tagId } });
     assert.equal((await json(base, "POST", `/api/v1/courses/${course.body.contentId}/publish`, undefined, token)).status, 200);
     const courseProgress = await json(base, "GET", `/api/v1/courses/${course.body.contentId}/progress`, undefined, token);
     assert.equal(courseProgress.body.totalDurationSeconds, 150);

@@ -10,6 +10,7 @@ import {
   readAccessToken,
   sha256,
   signAccessToken,
+  verifyMissingPassword,
   verifyPassword,
 } from "./security.js";
 import type { MediaStorage } from "./storage.js";
@@ -163,8 +164,12 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
     const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     const user = email ? await prisma.appUser.findUnique({ where: { emailNormalized: email } }) : null;
-    const ok = user?.passwordHash ? await verifyPassword(user.passwordHash, password) : false;
-    if (!user || !ok) throw new HttpError(401, "unauthorized", "Invalid email or password");
+    if (!user?.passwordHash) {
+      await verifyMissingPassword(password, config);
+      throw new HttpError(401, "unauthorized", "Invalid email or password");
+    }
+    const ok = await verifyPassword(user.passwordHash, password);
+    if (!ok) throw new HttpError(401, "unauthorized", "Invalid email or password");
     if (user.accountStatus !== "ACTIVE") throw new HttpError(403, "forbidden", "Account is not active");
     res.status(200).json(await issueSession(user.userId));
   }));
@@ -215,6 +220,10 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
     const now = new Date();
     if (!row || row.session.revokedAt || row.session.expiresAt <= now || row.expiresAt <= now) {
       throw new HttpError(401, "unauthorized", "Authentication required");
+    }
+    const account = await prisma.appUser.findUnique({ where: { userId: row.session.userId } });
+    if (!account || account.accountStatus !== "ACTIVE") {
+      throw new HttpError(403, "forbidden", "Account is not active");
     }
     if (row.usedAt || row.revokedAt) {
       await prisma.userSession.update({ where: { sessionId: row.sessionId }, data: { revokedAt: now } });
@@ -514,7 +523,9 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
     const auth = await requireAuth(req);
     requireRole(auth, ["CREATOR", "ADMIN"]);
     await ownContent(auth, req.params.contentId);
-    await prisma.contentAttachment.delete({ where: { attachmentId: req.params.attachmentId } });
+    const attachment = await prisma.contentAttachment.findUnique({ where: { attachmentId: req.params.attachmentId } });
+    if (!attachment || attachment.contentId !== req.params.contentId) throw new HttpError(404, "not_found", "Not found");
+    await prisma.contentAttachment.delete({ where: { attachmentId: attachment.attachmentId } });
     res.status(200).json({ status: "ok" });
   }));
 
@@ -538,6 +549,7 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
 
   router.patch("/courses/:contentId", asyncHandler(async (req, res) => {
     const auth = await requireAuth(req);
+    requireRole(auth, ["CREATOR", "ADMIN"]);
     const content = await ownContent(auth, req.params.contentId);
     if (content.status === "PUBLISHED") throw new HttpError(409, "conflict", "Published course cannot be edited in place");
     await prisma.content.update({
@@ -549,6 +561,7 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
 
   router.post("/courses/:contentId/modules", asyncHandler(async (req, res) => {
     const auth = await requireAuth(req);
+    requireRole(auth, ["CREATOR", "ADMIN"]);
     await ownContent(auth, req.params.contentId);
     const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
     const position = req.body?.position;
@@ -565,6 +578,7 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
 
   router.post("/modules/:moduleId/lessons", asyncHandler(async (req, res) => {
     const auth = await requireAuth(req);
+    requireRole(auth, ["CREATOR", "ADMIN"]);
     const module = await prisma.courseModule.findUnique({ where: { moduleId: req.params.moduleId } });
     if (!module) throw new HttpError(404, "not_found", "Not found");
     await ownContent(auth, module.courseContentId);
@@ -586,17 +600,25 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
 
   router.post("/courses/:contentId/publish", asyncHandler(async (req, res) => {
     const auth = await requireAuth(req);
+    requireRole(auth, ["CREATOR", "ADMIN"]);
     const content = await ownContent(auth, req.params.contentId);
     const modules = await prisma.courseModule.findMany({
       where: { courseContentId: content.contentId },
-      include: { lessons: { include: { video: true } } },
+      include: { lessons: { include: { video: { include: { content: { include: { tags: true } } } } } } },
     });
     if (modules.length === 0 || modules.some((module) => !module.title || module.lessons.length === 0)) {
       throw new HttpError(400, "validation", "Course is incomplete");
     }
     for (const module of modules) {
       for (const lesson of module.lessons) {
-        if (!lesson.title || !lesson.video.mediaReference) throw new HttpError(400, "validation", "Each lesson needs a video");
+        const videoContent = lesson.video.content;
+        const ready = lesson.title
+          && lesson.video.mediaReference
+          && videoContent.description
+          && videoContent.keywords
+          && lesson.video.sources
+          && videoContent.tags.length > 0;
+        if (!ready) throw new HttpError(400, "validation", "Each lesson video is missing required fields");
       }
     }
     await prisma.content.update({

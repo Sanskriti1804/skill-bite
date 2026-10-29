@@ -35,6 +35,18 @@ export async function verifyPassword(hash: string, password: string): Promise<bo
   }
 }
 
+const dummyHashes = new Map<string, Promise<string>>();
+
+export async function verifyMissingPassword(password: string, config: AppConfig): Promise<void> {
+  const key = `${config.ARGON2_MEMORY_COST}:${config.ARGON2_TIME_COST}:${config.ARGON2_PARALLELISM}`;
+  let pending = dummyHashes.get(key);
+  if (!pending) {
+    pending = hashPassword("not-a-stored-credential", config);
+    dummyHashes.set(key, pending);
+  }
+  await verifyPassword(await pending, password);
+}
+
 function signingKey(config: AppConfig): Uint8Array {
   if (!config.TOKEN_SIGNING_SECRET) {
     throw new Error("Invalid environment: TOKEN_SIGNING_SECRET");
