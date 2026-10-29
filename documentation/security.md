@@ -26,7 +26,7 @@ As written in `SkillBite-ERD.md`:
 - A second use of a consumed refresh token is replay. Whether that revokes the session or the token family is not specified.
 - Logout sets `USER_SESSION.revoked_at` and revokes active refresh tokens for that session.
 - A session with `revoked_at` set, or `expires_at` in the past, does not authorize.
-- Account status is checked as well. Allowed status values are not defined yet.
+- Account status is checked as well. Only `ACTIVE` may sign in or call a protected API. `SUSPENDED` and `DEACTIVATED` may not.
 
 ## Authorization
 
@@ -44,7 +44,7 @@ Do not log passwords, raw tokens, push tokens, or full learning-history dumps. A
 - Password hashing algorithm and parameters.
 - Access-token format and lifetime.
 - Refresh-reuse response.
-- Account-status values.
+- Account-status values are `ACTIVE`, `SUSPENDED`, and `DEACTIVATED`.
 - Google client secrets and database credentials kept out of the repository.
 
 ## Checklist

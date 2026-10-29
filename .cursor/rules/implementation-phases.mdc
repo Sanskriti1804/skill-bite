@@ -1,0 +1,69 @@
+---
+description: Production implementation workflow. Follow only the phase named in the current request.
+alwaysApply: true
+---
+
+# Production-quality application development
+
+Build the application incrementally from the repository, the approved BRD, ADR 0002, the ERD, and `backend/`, `frontend/`, and `ai-input/`. The goal of an implementation request is working software.
+
+## Source of truth
+
+Before implementing a feature, consult, in order: `SkillBite.md`, `documentation/decisions/0002-confirmed-answers.md`, `SkillBite-ERD.md`, `documentation/architecture.md` and `documentation/api.md`, `AGENTS.md`, then existing code, tests, migrations, and configuration.
+
+Resolve conflicts explicitly. Do not silently override an approved requirement or invent business behavior. Where ADR 0002 resolves an open BRD item, follow ADR 0002. Verify documentation against the code.
+
+## Phase order
+
+1. Repository baseline and implementation plan.
+2. Backend application foundation.
+3. Database and ORM implementation.
+4. Shared backend infrastructure and authentication, in dependency order.
+5. Feature-wise backend API implementation.
+6. Backend integration and verification.
+7. Frontend foundation and API client.
+8. Feature-wise frontend integration.
+9. End-to-end verification and defect resolution.
+10. Security hardening, documentation synchronization, and release readiness.
+
+Adapt the order only when a real dependency requires it, and document why.
+
+Execute only the phase named in the current request. Do not implement later phases. Do not stop at a plan when that phase requires code. Continue until its acceptance criteria are met or a documented blocker stops the work.
+
+## Implementation rules
+
+- Write real code for every approved requirement in scope.
+- Reuse a verified implementation instead of recreating it.
+- Finish partial work that is in scope.
+- Do not add unused files, endpoints, abstractions, dependencies, or infrastructure.
+- Do not substitute mocks, hardcoded success, or placeholders for required behavior.
+- Keep business rules, database constraints, API contracts, frontend types, tests, and docs consistent.
+- Use the ADR 0002 stack unless an approved change is required.
+- Preserve existing data and working behavior.
+- Do not run destructive operations or production deployments unless the user explicitly authorizes them.
+- Do not claim a feature, test, build, or deployment is complete without evidence from a run.
+
+## Procedure for the current phase
+
+1. Read the relevant code and documentation.
+2. Fix the phase scope and its dependencies.
+3. List files to reuse, create, or modify.
+4. Check that prerequisite phases are done.
+5. Implement in small steps.
+6. Run the relevant tests and quality checks.
+7. Fix failures caused by the change.
+8. Update the docs and implementation status that this phase invalidates.
+9. Check the diff for regressions and scope creep.
+10. Report actual results and unresolved issues.
+
+Do not repeat completed work. If a prerequisite is missing, implement it only when it belongs to this phase and can be finished safely. Otherwise name the blocker and stop the dependent work.
+
+## Done means
+
+In-scope code is implemented, acceptance criteria were checked, relevant tests were run where possible, existing behavior was not knowingly broken, required docs were updated, and remaining failures are recorded. If work remains, report the phase as partial.
+
+## Report
+
+State the phase objective and scope, what was reused, commands run and their results, outstanding issues, completion status, and the next phase with its prerequisites.
+
+End every response that changes files with a change summary. List each created, modified, or deleted file and one line on what changed in it. Do not omit a file because the edit was small. If no file changed, say that.

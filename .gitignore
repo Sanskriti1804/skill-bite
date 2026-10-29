@@ -1,4 +1,7 @@
-# Secrets. No application env files exist yet.
+# Secrets
 .env
 .env.*
 !.env.example
+
+backend/node_modules/
+backend/dist/

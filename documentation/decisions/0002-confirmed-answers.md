@@ -15,9 +15,9 @@ The BRD is approved for implementation (Q-02). The word Learner in the BRD is th
 | Q-06 | Roles are User, Creator, and Admin. One administrator. That admin can delete content and restore it. No multi-admin management. |
 | Q-08 | A video needs title, description, creator, video asset, and applicable captions before publish, plus sources, tags, and keywords. A course needs module names, lesson names, and a video on each lesson. Supporting files are optional. The server validates required fields before publish. |
 | Q-09 | Lessons may be watched in any order. Display order is required. Positions are unique within the parent course or module. |
-| Q-10 | One video asset belongs to one lesson. Progress is stored for the lesson, not reused across lessons. External hyperlinks are supporting materials only. |
+| Q-10 | Video progress is one row per user and video (`VIDEO_PROGRESS`). Course progress is calculated from the total duration of that course's videos and the duration completed. Recently played means videos. A course in this MVP is video content only. One video asset per lesson remains the content rule; the ERD cardinality is still zero-to-many until that tightening is approved. |
 | Q-11 | The admin configures the completion threshold. The initial value is 90%. Completion uses playback-progress data, not last position alone. Seeking, replay, interrupted sessions, and multiple devices must be handled consistently. Existing completion rows are not recalculated when the threshold changes. |
-| Q-12 | Search titles, descriptions, tags, and keywords. Filter by category. Sort by newest and trending. Trending uses views and completions. Learners see published content only. Unpublished and deleted content stay out of learner discovery. |
+| Q-12 | Search titles, descriptions, tags, and keywords. Filter by category, including a Trending category. Trending is not a view-count or completion ranking. Learners see published content only. |
 | Q-13 | English UI. Loading, empty, error, and success states. Extra screen specs only where a workflow is still ambiguous. |
 | Q-14 | Baseline, unless a college rule overrides it: Expo and React Native (TypeScript) for mobile; Next.js (TypeScript) for the web admin UI; Node.js, Express, and TypeScript for the API; REST; PostgreSQL, Prisma, and versioned migrations; server-validated auth with Google sign-in. Local media storage in development; object storage and a CDN in production. Secrets in environment variables. Hosting provider is still an implementation choice. |
 | Q-15 | `backend/`, `frontend/`, and `ai-input/` stay. Backend holds the API, domain logic, database access, and backend tests. Frontend holds client UI and frontend tests. `ai-input/` holds reference material for AI-assisted work. |
@@ -32,24 +32,24 @@ The BRD is approved for implementation (Q-02). The word Learner in the BRD is th
 
 ## Partial
 
-**Q-07.** Creators manage their own content. Drafts can be edited before publication. Only the admin deletes and restores content. Deletion is recoverable, not an immediate erase. How a creator edits content after it is published is not fully specified. Do not add an approval queue: BR-03 still says creator publishing needs no pre-publication approval. The “approval or rejection” notification in Q-22 applies only if that workflow is explicitly added later.
+**Q-07.** Creators edit drafts before publication. A published video is not edited in place. The creator takes it down and submits the revised video for publication again. That resubmission is the same creator publish path. There is no approval queue. Only the admin deletes and restores content. Deletion stays recoverable by the admin. Whether the creator may change published text without taking the video down is still unspecified.
 
-**Q-11 measurement.** The threshold and the “not last position” rule are accepted. The exact watched-coverage formula is not specified beyond consistent handling of seek, replay, interruption, and multiple devices.
+**Q-11 measurement.** The threshold, the ban on using last position as completion, and the rule that existing completions stay when the threshold changes are accepted. No coverage formula is approved. A proposal, not a decision: count a video complete only when the sum of non-overlapping watched segments reaches the threshold. Do not implement that proposal until it is accepted.
 
-**Q-17.** Deleted accounts must be recoverable: content and progress can be reattached after a later registration once identity is verified. Immediate destruction is not the default. Permanent deletion, anonymization, and the legal retention period are still “according to applicable privacy requirements” and are not a written policy.
+**Q-17.** Reattaching content and progress after a person registers again is not an MVP feature. Password recovery (FR-AUTH-03) remains. FR-PRIV-04 and FR-PRIV-06 still require a deletion and retention description, and that policy is not written. Do not invent a retention period or a permanent-delete rule.
 
 **Q-22.** In-app and push notifications are in scope. Optional messages cover new content the user opted into, learning reminders or milestones, progress and completion, and promotional messages. Essential account and security messages are separate from optional ones. Firebase Cloud Messaging is the stated push example. The event list is still a default, not a closed catalog. Do not send publication-approval notifications unless an approval workflow exists.
 
 ## Not resolved
 
-**Q-05.** Account-status values are not confirmed. See the question in the decision discussion. Do not treat `ACTIVE`, `SUSPENDED`, and `DELETED` as accepted codes.
+**Q-05.** MVP account statuses are `ACTIVE`, `SUSPENDED`, and `DEACTIVATED`. `ACTIVE` may sign in and call protected APIs allowed by the active role. `SUSPENDED` is an administrator block: no sign-in and no protected API. `DEACTIVATED` is the account-deactivation state in FR-AUTH-08: no sign-in and no protected API. Password-reset tokens are not a substitute for an active account. No extra status is included.
 
-**Q-25.** Minimum age and parental consent are not confirmed. The BRD does not define an “under 8” rule.
+**Q-25.** Children under eight years of age require parental consent. No other age limit is approved. How consent is captured and stored is not specified.
 
 ## Consequences
 
-- `VIDEO_PROGRESS` keyed only by user and video no longer matches Q-10. Progress must be per lesson. The ERD file has not been redrawn in this record.
-- Supporting attachments need a place in the data model. They are not a second content type beside video and course.
+- `VIDEO_PROGRESS` stays unique on `(user_id, video_content_id)`. Course progress is derived. `CONTENT_ATTACHMENT` holds supporting files and links.
+- Push event lists and Firebase Cloud Messaging are unchanged. FCM is not a required provider.
 - One video must not be referenced by two lessons.
 - Role remains a single active `role_id` that the account owner may change between User and Creator. Admin assignment is not a self-service switch.
 - Application code may follow the Q-14 baseline. The hosting provider is still unnamed.

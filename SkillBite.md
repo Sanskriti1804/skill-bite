@@ -146,13 +146,11 @@ An administrator manages users, content moderation, categories and tags, platfor
 
 - Personalized recommendation functionality; basic discovery is included. 
 
-- Additional content formats beyond video, subject to resolving the downloadable-resource ambiguity below. 
+- Additional primary content formats beyond video. Supporting attachments are in scope and are not a primary content type. 
 
 ### **5.3 Deferred or Unconfirmed Features** 
 
 The following must not be silently included in the confirmed MVP: 
-
-- Downloadable attachments and learning resources. 
 
 - Ratings, reviews, and replies. 
 
@@ -166,7 +164,7 @@ The following must not be silently included in the confirmed MVP:
 
 - Monetization in future releases. 
 
-Downloadable resources need an explicit decision because they were selected alongside “video only for the MVP.” Until resolved, video is the confirmed content type and attachments are not treated as a confirmed MVP requirement. 
+Video is the primary content type. Creators may attach supporting PDFs, text documents, and hyperlinks. Those attachments are not separate primary content types. For course progress, a course is treated as video content only. There is no document-reading progress. 
 
 ## **6. User Workflows** 
 
@@ -216,9 +214,9 @@ The exact learner capabilities available to a Creator account remain to be confi
 
 7. Make published content available according to platform access rules. 
 
-8. Edit, unpublish, or delete owned content according to the finalized content-management rules. 
+8. Edit a draft before publication. A published video is not edited in place. The creator takes it down and submits the revised video for publication again, without a separate approval queue. 
 
-Draft management, required metadata, editing restrictions, and the lifecycle of published content need further specification. 
+Drafts may be edited before publication. Only an administrator deletes or restores content. Deletion stays recoverable by that administrator. 
 
 ### **6.3 Administrator Workflow** 
 
@@ -348,6 +346,8 @@ Priority definitions:
 
 - Content that is not available to learners is excluded according to its visibility rules. 
 
+- Trending is a category used for discovery. It is not a view-count or completion ranking. 
+
 ### **7.4 Video Playback and Learning Progress** 
 
 |**ID**|**Requirement**|**Priority**|
@@ -355,11 +355,11 @@ Priority definitions:
 |FR-PROG-01|The system shall allow learners to play<br>available educational videos.|Must|
 |FR-PROG-02|The system shall save learning<br>progress automatically.|Must|
 |FR-PROG-03|The system shall allow learners to<br>resume content from the last saved<br>position.|Must|
-|FR-PROG-04|The system shall determine lesson<br>completion using a configurable<br>threshold, initially specified as at least<br>90% watched.|Must|
+|FR-PROG-04|The system shall determine video<br>completion using a configurable<br>threshold, initially specified as at least<br>90% watched. Course progress is<br>calculated separately from video<br>progress.|Must|
 |FR-PROG-05|The system shall expose appropriate<br>progress and completion information to<br>the learner.|Must|
 |FR-PROG-06|The system shall support watch history<br>and continue-learning functionality.|Must|
 |FR-PROG-07|The system shall support bookmarks<br>for learning content.|Must|
-|FR-PROG-08|The calculation of watched progress,<br>seeking behavior, threshold ownership,<br>and completion updates shall be<br>explicitly defined.|Open|
+|FR-PROG-08|Watched coverage must not be inferred<br>from last playback position alone.<br>Changing the threshold must not<br>recalculate existing completions. The<br>exact coverage formula remains<br>unapproved.|Open|
 
 
 
@@ -468,7 +468,7 @@ Priority definitions:
 |FR-PRIV-02|Access to personal and learning data<br>shall be restricted by authorization<br>rules.|Must|
 |FR-PRIV-03|The system shall support consent<br>where required by applicable law or the<br>approved product requirements.|Must|
 |FR-PRIV-04|Account deactivation, deletion, and<br>retention behavior shall be<br>documented.|Must|
-|FR-PRIV-05|Age eligibility and parental/guardian<br>consent requirements shall be<br>determined before launch.|Open|
+|FR-PRIV-05|Children under eight years of age<br>require parental consent. No other age<br>limit is approved.|Must|
 |FR-PRIV-06|Retention behavior for learning<br>progress, bookmarks, history, and<br>creator content after account deletion<br>shall be defined.|Open|
 
 
@@ -494,7 +494,7 @@ The following rules are confirmed or directly required by the selected product b
 |BR-03|Creator publishing does not require mandatory<br>pre-publication approval.|
 |BR-04|A course is organized into modules/sections and lessons.|
 |BR-05|Learning progress is saved automatically.|
-|BR-06|Lesson completion uses a configurable threshold, with 90%<br>as the stated initial threshold.|
+|BR-06|Video completion uses a configurable threshold, with 90%<br>as the stated initial threshold. Course progress is calculated<br>separately from the total video duration and the duration<br>completed. Last playback position alone is not completion.|
 |BR-07|Personalized recommendations and learning streaks are<br>excluded from the MVP.|
 |BR-08|Comments and community interactions are excluded from<br>the MVP.|
 |BR-09|Administrative operations must be protected by<br>authorization.|
@@ -506,11 +506,11 @@ The following rules require decisions before their affected behavior can be fina
 
 - Whether creators can use learner features while retaining the Creator role. 
 
-- Whether creators can edit, unpublish, or delete published content. 
+- Whether a creator may change published metadata other than by taking the video down and publishing the revision. The in-place edit of a published video is not allowed. 
 
 - Whether lessons may be taken in any order or must be completed sequentially. 
 
-- How video seeking affects watched progress and completion. 
+- Which watched-coverage formula is approved. Last position is not sufficient, and existing completions are kept when the threshold changes. 
 
 - Who can change the completion threshold. 
 
@@ -668,17 +668,17 @@ The specific providers and technologies are not confirmed by this BRD.
 
 |**ID**|**Open decision**|**Why it matters**|
 |---|---|---|
-|OD-01|Whether downloadable resources<br>belong in the MVP|Affects content scope and file handling|
+|OD-01|Resolved. Supporting attachments are<br>in the MVP. Video remains the primary<br>content type.|Closed|
 |OD-02|Whether Creators can use learner<br>features|Affects permissions and account<br>behavior|
 |OD-03|Creator draft, edit, unpublish, and<br>delete rules|Affects content lifecycle and ownership|
 |OD-04|Minimum requirements for publishing a<br>course|Affects validation and course<br>completeness|
 |OD-05|Lesson ordering and sequential-access<br>rules|Affects the learning workflow|
-|OD-06|Progress calculation, seeking, and<br>completion configuration|Affects progress correctness|
+|OD-06|The coverage formula is not approved.<br>See FR-PROG-08.|Still open|
 |OD-07|Search fields, filters, sorting, and<br>featured content|Defines the discovery experience|
 |OD-08|Notification triggers and user<br>preferences|Defines notification behavior|
 |OD-09|Analytics metrics and intended viewers|Defines reports and access control|
-|OD-10|Age eligibility and parental/guardian<br>consent|Affects account and privacy<br>requirements|
-|OD-11|Account deletion and retention by data<br>category|Affects privacy and data lifecycle|
+|OD-10|Resolved for age. Children under eight<br>require parental consent. How that<br>consent is recorded is not specified.|Consent method still open|
+|OD-11|Account recovery after a later<br>registration is not an MVP feature.<br>Retention and permanent deletion are<br>still undefined. Password recovery<br>remains a separate requirement.|Retention still open|
 |OD-12|Content behavior after creator<br>deactivation or deletion|Affects ownership and content<br>availability|
 |OD-13|Administrator authority and audit<br>events|Affects permissions and accountability|
 |OD-14|Caption/subtitle provision method|Affects content creation and playback|

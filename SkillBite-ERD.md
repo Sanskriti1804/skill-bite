@@ -29,6 +29,7 @@ erDiagram
 
     CONTENT ||--o{ CONTENT_CATEGORY : "categorized as"
     CONTENT ||--o{ CONTENT_TAG : "tagged with"
+    CONTENT ||--o{ CONTENT_ATTACHMENT : "has supporting file or link"
     CONTENT ||--o{ BOOKMARK : "bookmarked in"
 
     CATEGORY ||--o{ CONTENT_CATEGORY : "assigned to"
@@ -52,7 +53,7 @@ erDiagram
         string email_normalized UK
         string password_hash "nullable"
         string display_name
-        string account_status
+        string account_status "ACTIVE, SUSPENDED, or DEACTIVATED"
         datetime email_verified_at "nullable"
         datetime created_at
         datetime updated_at
@@ -170,6 +171,13 @@ erDiagram
     CONTENT_TAG {
         uuid content_id PK, FK
         uuid tag_id PK, FK
+    }
+
+    CONTENT_ATTACHMENT {
+        uuid attachment_id PK
+        uuid content_id FK
+        string kind "PDF, TEXT, or HYPERLINK"
+        string reference "file reference or URL"
     }
 
     BOOKMARK {
@@ -340,7 +348,7 @@ The following constraints must be implemented in database migrations or equivale
 - `COURSE_MODULE`: unique `(course_content_id, position)`.
 - `LESSON`: unique `(module_id, position)`.
 - `VIDEO_CAPTION`: unique `(video_content_id, language_code, format)`.
-- `VIDEO_PROGRESS`: unique `(user_id, video_content_id)`.
+- `VIDEO_PROGRESS`: unique `(user_id, video_content_id)`. This is video progress only. Course progress is not a row in this table.
 
 ### 3.2 Refresh-Token Constraints
 
@@ -356,7 +364,12 @@ The following constraints must be implemented in database migrations or equivale
 
 - `CONTENT.content_type` must be restricted to supported values, including `VIDEO` and `COURSE`.
 - Each content record must have exactly one matching subtype: `VIDEO_DETAILS` for video content or `COURSE_DETAILS` for course content, but not both.
-- `VIDEO_PROGRESS.last_position_seconds` must be non-negative and no greater than the associated video's duration.
+- `VIDEO_PROGRESS.last_position_seconds` must be non-negative and no greater than the associated video's duration. It is the resume position. It does not by itself set `completed_at`.
+- `USER.account_status` is `ACTIVE`, `SUSPENDED`, or `DEACTIVATED`.
+- `CONTENT_ATTACHMENT.kind` is `PDF`, `TEXT`, or `HYPERLINK`. `reference` is a stored file reference or a URL. Attachments are supporting material, not a `CONTENT.content_type`.
+- Course progress is calculated from the durations of the course's videos and the portion of those durations completed. It is not stored as its own progress key. Recently played content is the video progress rows. The MVP course contains videos only.
+
+The ERD still draws `VIDEO_DETAILS` to `LESSON` as zero-to-many. ADR 0002 says one video asset belongs to one lesson. That cardinality was not changed in this correction because the video-progress key stays `(user_id, video_content_id)`. Whether the diagram should be tightened to one lesson per video is still an open approval.
 - Define allowed values for `CONTENT.status`, `USER.account_status`, `AUTH_TOKEN.token_type`, and `PUSH_DEVICE.platform`.
 - Define the foreign-key deletion behavior explicitly for every relationship.
 - Ensure that only appropriate content types can be used as videos in lessons or progress records.

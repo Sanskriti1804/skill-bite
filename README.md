@@ -34,7 +34,7 @@ Not selected. See `documentation/decisions/0001-technology-stack.md`.
 
 ## Setup
 
-There is no install or run command. `backend/`, `frontend/`, and `ai-input/` are empty directories. They are not an accepted architecture.
+The API foundation is in `backend/`. See `backend/README.md` for install and `GET /health`. Business routes are not implemented. `frontend/` and `ai-input/` are still empty.
 
 ## Limitations
 

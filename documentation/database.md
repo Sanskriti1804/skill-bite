@@ -7,7 +7,7 @@ The logical model is [SkillBite-ERD.md](../SkillBite-ERD.md). That file owns ent
 - One database for all clients. Do not split learner data by Android, iOS, or web.
 - `USER.role_id` means one role per account.
 - `CONTENT` holds shared fields. `VIDEO_DETAILS` and `COURSE_DETAILS` hold the subtype. The ERD text requires exactly one matching subtype. Diagram lines alone do not enforce that.
-- `VIDEO_PROGRESS` is the current row for a user and a video. Resume uses `last_position_seconds`. That column does not prove the completion threshold.
+- `VIDEO_PROGRESS` is the current row for a user and a video. Resume uses `last_position_seconds`. That column does not prove the completion threshold. Course progress is calculated from video durations and is not a second progress table. `CONTENT_ATTACHMENT` stores supporting PDFs, text files, and hyperlinks.
 - Sharing has no table. Payments, comments, streaks, and recommendations have no tables.
 
 ## Not in this repository

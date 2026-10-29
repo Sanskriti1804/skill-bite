@@ -11,7 +11,7 @@ Non-functional topics already named in the BRD, without numeric targets: securit
 | FR-AUTH-04 | — | `AUTH_IDENTITY` | Unique `(provider, provider_user_id)`; do not link on unverified email alone | Google sign-in cases |
 | FR-AUTH-05, BR-02 | One role | `USER.role_id` | Server reads the stored role | Role assignment tests |
 | FR-AUTH-06, BR-09, BR-10 | — | all protected rows | Authorization on the server | Forbidden-access tests |
-| FR-AUTH-07 | — | `USER.account_status` | Allowed statuses and transitions still undefined | Blocked until status values exist |
+| FR-AUTH-07 | ACTIVE, SUSPENDED, DEACTIVATED | `USER.account_status` | Only `ACTIVE` may sign in and call protected APIs | Status check tests |
 | FR-AUTH-08, FR-PRIV-04 | — | `USER.deleted_at` and related rows | Deletion and retention are OD-11 | Blocked |
 | FR-CONT-01, FR-CONT-02, BR-04 | — | `CONTENT`, subtypes, `COURSE_MODULE`, `LESSON` | Subtype XOR | Create video and course |
 | FR-CONT-03, BR-03 | No mandatory approval | `CONTENT.status` | Publish path for a creator | Publish without an approval queue |
@@ -20,7 +20,7 @@ Non-functional topics already named in the BRD, without numeric targets: securit
 | FR-CONT-09 | — | `CONTENT.creator_id` | Ownership check; the foreign key is not authorization | Cross-creator update rejected |
 | FR-DISC-01–05 | — | `CONTENT`, category and tag junctions | Only learner-visible statuses; search engine is undecided | Browse and filter tests |
 | FR-PROG-02, FR-PROG-03, BR-05 | — | `VIDEO_PROGRESS.last_position_seconds` | One row per user and video | Save and resume |
-| FR-PROG-04, BR-06 | 90% initial threshold | `SYSTEM_SETTING`, `completed_at` | Measurement is OD-06 | Blocked for the completion assertion |
+| FR-PROG-04, BR-06 | 90% initial threshold | `VIDEO_PROGRESS`, derived course progress | Last position is not completion. Completions are not recalculated. Coverage formula is not approved | Blocked for the coverage assertion |
 | FR-PROG-06 | History and continue | `VIDEO_PROGRESS.last_watched_at` | Current-state list only; no session history table | List by last watched |
 | FR-PROG-07 | — | `BOOKMARK` | Composite primary key | Duplicate bookmark rejected |
 | FR-SHARE-01, FR-SHARE-02 | — | none | Stable content URL | Link opens available content |

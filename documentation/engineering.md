@@ -28,7 +28,7 @@ Build one vertical slice first: register, verify email, create a standalone vide
 
 Then: courses and lessons, discovery by category, admin status and audit, Google sign-in, push and in-app notifications, analytics derived from progress rows.
 
-Out of this plan: payments, comments, streaks, recommendations, and downloadable attachments unless OD-01 is accepted into the MVP.
+Out of this plan: payments, comments, streaks, recommendations, account recovery after a new registration, and trending analytics. Supporting attachments are in scope.
 
 ## Gates
 
