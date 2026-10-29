@@ -1,6 +1,6 @@
 # Engineering status
 
-The repository is not production-ready. No application, database, CI workflow, or deployment exists. ADR 0001 is open, so this file does not add package manifests, pipelines, containers, or hosting commands.
+The repository is not production-ready. ADR 0002 is the implementation baseline. `backend/` has an Express API, a Prisma schema, and `npm test` / `npm run typecheck`. `frontend/` is the Next.js client. `frontend/mobile/` is the Expo client. No host is chosen. Hosting, CI, and deployment commands stay out of this file.
 
 ## Can start now
 

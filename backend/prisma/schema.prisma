@@ -1,0 +1,361 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  roleId  String    @id @default(uuid()) @map("role_id") @db.Uuid
+  code    String    @unique
+  name    String
+  users   AppUser[]
+
+  @@map("role")
+}
+
+model AppUser {
+  userId          String    @id @default(uuid()) @map("user_id") @db.Uuid
+  roleId          String    @map("role_id") @db.Uuid
+  emailNormalized String    @unique @map("email_normalized")
+  passwordHash    String?   @map("password_hash")
+  displayName     String    @map("display_name")
+  accountStatus   String    @map("account_status")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  role                    Role                     @relation(fields: [roleId], references: [roleId], onDelete: Restrict, onUpdate: Restrict)
+  identities              AuthIdentity[]
+  authTokens              AuthToken[]
+  sessions                UserSession[]
+  content                 Content[]
+  bookmarks               Bookmark[]
+  progress                VideoProgress[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  pushDevices             PushDevice[]
+  auditLogs               AuditLog[]
+  settingsUpdated         SystemSetting[]
+
+  @@index([roleId])
+  @@index([accountStatus])
+  @@map("app_user")
+}
+
+model AuthIdentity {
+  identityId     String   @id @default(uuid()) @map("identity_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  provider       String
+  providerUserId String   @map("provider_user_id")
+  linkedAt       DateTime @default(now()) @map("linked_at") @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([provider, providerUserId])
+  @@map("auth_identity")
+}
+
+model AuthToken {
+  tokenId    String    @id @default(uuid()) @map("token_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenType  String    @map("token_type")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([userId, tokenType])
+  @@map("auth_token")
+}
+
+model UserSession {
+  sessionId  String    @id @default(uuid()) @map("session_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user          AppUser        @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@map("user_session")
+}
+
+model RefreshToken {
+  refreshTokenId    String    @id @default(uuid()) @map("refresh_token_id") @db.Uuid
+  sessionId         String    @map("session_id") @db.Uuid
+  tokenHash         String    @unique @map("token_hash")
+  issuedAt          DateTime  @map("issued_at") @db.Timestamptz(6)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt            DateTime? @map("used_at") @db.Timestamptz(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(6)
+  replacedByTokenId String?   @unique @map("replaced_by_token_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session     UserSession   @relation(fields: [sessionId], references: [sessionId], onDelete: Restrict, onUpdate: Restrict)
+  replacedBy  RefreshToken? @relation("RefreshReplacement", fields: [replacedByTokenId], references: [refreshTokenId], onDelete: Restrict, onUpdate: Restrict)
+  replaces    RefreshToken? @relation("RefreshReplacement")
+
+  @@index([sessionId])
+  @@map("refresh_token")
+}
+
+model Content {
+  contentId   String    @id @default(uuid()) @map("content_id") @db.Uuid
+  creatorId   String    @map("creator_id") @db.Uuid
+  contentType String    @map("content_type")
+  title       String
+  description String?
+  keywords    String?
+  status      String
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  creator      AppUser             @relation(fields: [creatorId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  video        VideoDetails?
+  course       CourseDetails?
+  categories   ContentCategory[]
+  tags         ContentTag[]
+  attachments  ContentAttachment[]
+  bookmarks    Bookmark[]
+
+  @@index([creatorId, status])
+  @@map("content")
+}
+
+model VideoDetails {
+  contentId       String @id @map("content_id") @db.Uuid
+  mediaReference  String @map("media_reference")
+  durationSeconds Int    @map("duration_seconds")
+  sources         String?
+
+  content  Content         @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+  lesson   Lesson?
+  captions VideoCaption[]
+  progress VideoProgress[]
+
+  @@map("video_details")
+}
+
+model CourseDetails {
+  contentId String @id @map("content_id") @db.Uuid
+
+  content Content        @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+  modules CourseModule[]
+
+  @@map("course_details")
+}
+
+model CourseModule {
+  moduleId        String   @id @default(uuid()) @map("module_id") @db.Uuid
+  courseContentId String   @map("course_content_id") @db.Uuid
+  title           String
+  position        Int
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course  CourseDetails @relation(fields: [courseContentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+  lessons Lesson[]
+
+  @@unique([courseContentId, position])
+  @@map("course_module")
+}
+
+model Lesson {
+  lessonId       String   @id @default(uuid()) @map("lesson_id") @db.Uuid
+  moduleId       String   @map("module_id") @db.Uuid
+  videoContentId String   @unique @map("video_content_id") @db.Uuid
+  title          String
+  position       Int
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  module CourseModule @relation(fields: [moduleId], references: [moduleId], onDelete: Restrict, onUpdate: Restrict)
+  video  VideoDetails @relation(fields: [videoContentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([moduleId, position])
+  @@map("lesson")
+}
+
+model VideoCaption {
+  captionId       String    @id @default(uuid()) @map("caption_id") @db.Uuid
+  videoContentId  String    @map("video_content_id") @db.Uuid
+  languageCode    String    @map("language_code")
+  captionReference String   @map("caption_reference")
+  format          String
+  method          String?
+  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz(6)
+
+  video VideoDetails @relation(fields: [videoContentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([videoContentId, languageCode, format])
+  @@map("video_caption")
+}
+
+model Category {
+  categoryId  String  @id @default(uuid()) @map("category_id") @db.Uuid
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  isActive    Boolean @map("is_active")
+
+  content ContentCategory[]
+
+  @@map("category")
+}
+
+model ContentCategory {
+  contentId  String @map("content_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  content  Content  @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+  category Category @relation(fields: [categoryId], references: [categoryId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([contentId, categoryId])
+  @@index([categoryId])
+  @@map("content_category")
+}
+
+model Tag {
+  tagId String @id @default(uuid()) @map("tag_id") @db.Uuid
+  name  String @unique
+  slug  String @unique
+
+  content ContentTag[]
+
+  @@map("tag")
+}
+
+model ContentTag {
+  contentId String @map("content_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
+
+  content Content @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+  tag     Tag     @relation(fields: [tagId], references: [tagId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([contentId, tagId])
+  @@index([tagId])
+  @@map("content_tag")
+}
+
+model ContentAttachment {
+  attachmentId String @id @default(uuid()) @map("attachment_id") @db.Uuid
+  contentId    String @map("content_id") @db.Uuid
+  kind         String
+  reference    String
+
+  content Content @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("content_attachment")
+}
+
+model Bookmark {
+  userId    String   @map("user_id") @db.Uuid
+  contentId String   @map("content_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    AppUser @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  content Content @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([userId, contentId])
+  @@map("bookmark")
+}
+
+model VideoProgress {
+  progressId          String    @id @default(uuid()) @map("progress_id") @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  videoContentId      String    @map("video_content_id") @db.Uuid
+  lastPositionSeconds Int       @map("last_position_seconds")
+  lastWatchedAt       DateTime  @map("last_watched_at") @db.Timestamptz(6)
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  AppUser      @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  video VideoDetails @relation(fields: [videoContentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([userId, videoContentId])
+  @@index([userId, lastWatchedAt])
+  @@map("video_progress")
+}
+
+model Notification {
+  notificationId   String    @id @default(uuid()) @map("notification_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  notificationType String    @map("notification_type")
+  title            String
+  message          String
+  targetReference  String?   @map("target_reference")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt           DateTime? @map("read_at") @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([userId, createdAt])
+  @@map("notification")
+}
+
+model NotificationPreference {
+  userId        String   @map("user_id") @db.Uuid
+  notificationType String @map("notification_type")
+  inAppEnabled  Boolean  @map("in_app_enabled")
+  pushEnabled   Boolean  @map("push_enabled")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([userId, notificationType])
+  @@map("notification_preference")
+}
+
+model PushDevice {
+  deviceId           String    @id @default(uuid()) @map("device_id") @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  platform           String
+  encryptedPushToken String    @map("encrypted_push_token")
+  tokenFingerprint   String?   @unique @map("token_fingerprint")
+  lastRegisteredAt   DateTime  @map("last_registered_at") @db.Timestamptz(6)
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user AppUser @relation(fields: [userId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([userId])
+  @@map("push_device")
+}
+
+model AuditLog {
+  auditId     String   @id @default(uuid()) @map("audit_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String
+  targetType  String   @map("target_type")
+  targetId    String   @map("target_id")
+  details     String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor AppUser? @relation(fields: [actorUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_log")
+}
+
+model SystemSetting {
+  settingKey   String   @id @map("setting_key")
+  settingValue String   @map("setting_value")
+  updatedBy    String?  @map("updated_by") @db.Uuid
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  editor AppUser? @relation(fields: [updatedBy], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("system_setting")
+}

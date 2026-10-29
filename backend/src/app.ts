@@ -1,18 +1,12 @@
 import express, { type ErrorRequestHandler, type NextFunction, type Request, type Response } from "express";
 import type { AppConfig } from "./config.js";
+import { HttpError } from "./errors.js";
 import type { Logger } from "./logger.js";
+import { createApiRouter, type ApiDeps } from "./routes.js";
 
-export class HttpError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { HttpError } from "./errors.js";
 
-export function createApp(config: AppConfig, logger: Logger) {
+export function createApp(config: AppConfig, logger: Logger, deps?: ApiDeps) {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
@@ -33,6 +27,10 @@ export function createApp(config: AppConfig, logger: Logger) {
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" });
   });
+
+  if (deps) {
+    app.use("/api/v1", createApiRouter(config, deps));
+  }
 
   app.use((_req, res) => {
     res.status(404).json({ error: { code: "not_found", message: "Not found" } });

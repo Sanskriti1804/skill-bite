@@ -1,0 +1,7 @@
+{
+  "expo": {
+    "name": "SkillBite",
+    "slug": "skillbite",
+    "platforms": ["ios", "android"]
+  }
+}
