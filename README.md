@@ -53,6 +53,23 @@ npm run dev
 
 If the web app and the API both want port 3000, set `NEXT_PUBLIC_API_URL` to the API origin before starting Next. Health is `GET /health` and does not check the database. Business routes are under `/api/v1` when `DATABASE_URL` and `TOKEN_SIGNING_SECRET` are set.
 
+## Docker
+
+`docker-compose.yml` starts PostgreSQL, the API, and the Next.js app. The Expo app stays on the host. Database files stay in the `pgdata` volume. Local media stays in the `media` volume. The compose file uses the same local placeholder values as `backend/.env.example`. Replace `TOKEN_SIGNING_SECRET` and `PUSH_TOKEN_KEY` before any shared environment. Do not commit a real secret.
+
+From the repository root, with Docker running:
+
+```text
+docker compose build
+docker compose up -d
+```
+
+API: `http://127.0.0.1:3000/health`. Web: `http://127.0.0.1:3002`. The browser calls the API on the host, so `NEXT_PUBLIC_API_URL` is `http://127.0.0.1:3000`. Host port 3002 avoids the Next.js dev server, which uses 3001.
+
+Stop the stack with `docker compose down`. That keeps the database volume. `docker compose down -v` deletes the database volume and local media.
+
+If port 5432 or 3000 is already in use, stop the other Postgres or API process first. If the API is unhealthy, run `docker compose logs backend`. A failed migration is printed there. Rebuild after a dependency change with `docker compose build`.
+
 `npm test` and `npm run typecheck` run in `backend/` and `frontend/`. `frontend/mobile` has `npm start` and `npm run typecheck`. There is no lint or format script. ADR 0002 does not name a linter.
 
 ## Limitations

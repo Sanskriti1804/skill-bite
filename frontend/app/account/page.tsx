@@ -1,23 +1,46 @@
 "use client";
 
-import { Button } from "../../components/ui";
+import { useState } from "react";
+import { Button, Dialog, ErrorState } from "../../components/ui";
 import { useSession } from "../../components/session";
 import { api } from "../../lib/api";
 
 export default function AccountPage() {
   const session = useSession();
-  async function switchRole(role: "USER" | "CREATOR") {
-    await api("/api/v1/me/role", { method: "PATCH", token: session.token, body: { role } });
-    session.setSession({ token: session.token, refreshToken: session.refreshToken, role });
+  const [pending, setPending] = useState<"USER" | "CREATOR" | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function switchRole() {
+    if (!pending) return;
+    setError("");
+    try {
+      await api("/api/v1/me/role", { method: "PATCH", token: session.token, body: { role: pending } });
+      session.setSession({ token: session.token, refreshToken: session.refreshToken, role: pending });
+      setMessage(`Active role is ${pending}. Existing progress and content stay.`);
+      setPending(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not switch");
+    }
   }
+
   if (!session.token) return <p>Sign in to manage the account.</p>;
+  if (session.role === "ADMIN") return <p>Admin accounts are not switched from this page.</p>;
   return (
     <div className="stack">
       <h1>Account</h1>
-      <p>Active role: {session.role}</p>
-      <Button onClick={() => void switchRole("USER")}>Use as User</Button>
-      <Button onClick={() => void switchRole("CREATOR")}>Use as Creator</Button>
+      <p>Active role: {session.role || "Unknown"}</p>
+      <Button onClick={() => setPending("USER")}>Use as User</Button>
+      <Button onClick={() => setPending("CREATOR")}>Use as Creator</Button>
       <Button onClick={session.clear}>Sign out</Button>
+      {message ? <p>{message}</p> : null}
+      {error ? <ErrorState>{error}</ErrorState> : null}
+      {pending ? (
+        <Dialog title={`Switch to ${pending}?`} onClose={() => setPending(null)}>
+          <p>The other role’s screens hide. Progress and content remain.</p>
+          <Button primary onClick={() => void switchRole()}>Confirm switch</Button>
+        </Dialog>
+      ) : null}
     </div>
   );
 }

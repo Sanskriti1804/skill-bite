@@ -53,7 +53,7 @@ export default function WatchPage() {
     <div className="stack">
       <h1>{content.title}</h1>
       <p>Resume at {position} seconds. Completion is not shown from the playback position.</p>
-      {videoId ? <video controls src={`${apiBase}/api/v1/videos/${videoId}/media`} /> : <EmptyState>No video.</EmptyState>}
+      {videoId ? <video className="player" controls src={`${apiBase}/api/v1/videos/${videoId}/media`} /> : <EmptyState>This content is unavailable.</EmptyState>}
       {content.description ? <p>{content.description}</p> : null}
       {content.modules?.map((module) => (
         <section key={module.title}>
