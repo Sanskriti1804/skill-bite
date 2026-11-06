@@ -37,18 +37,21 @@ if (config.DATABASE_URL && config.TOKEN_SIGNING_SECRET) {
 const app = createApp(config, logger, deps);
 const server = createServer(app);
 
-server.listen(config.PORT, () => {
+server.listen(config.PORT, "0.0.0.0", () => {
   logger.info("listening", { port: config.PORT });
 });
 
 function shutdown(signal: string) {
   logger.info("shutdown", { signal });
   server.close((error) => {
-    if (error) {
-      logger.error("shutdown_failed", { name: error.name });
-      process.exit(1);
-    }
-    process.exit(0);
+    const disconnect = deps?.prisma.$disconnect() ?? Promise.resolve();
+    disconnect.finally(() => {
+      if (error) {
+        logger.error("shutdown_failed", { name: error.name });
+        process.exit(1);
+      }
+      process.exit(0);
+    });
   });
 }
 

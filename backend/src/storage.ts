@@ -17,11 +17,13 @@ export function localMediaStorage(root: string): MediaStorage {
       return reference.replaceAll("\\", "/");
     },
     async read(reference: string): Promise<Buffer> {
-      const normalized = path.normalize(reference);
-      if (normalized.startsWith("..") || path.isAbsolute(normalized)) {
+      const rootPath = path.resolve(root);
+      const target = path.resolve(rootPath, reference);
+      const relative = path.relative(rootPath, target);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) {
         throw new Error("invalid reference");
       }
-      return readFile(path.join(root, normalized));
+      return readFile(target);
     },
   };
 }

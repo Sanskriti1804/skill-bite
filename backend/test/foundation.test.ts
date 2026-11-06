@@ -62,6 +62,30 @@ test("invalid JSON does not leak a stack trace", async () => {
   });
 });
 
+test("browser origin is allowed only when configured", async () => {
+  const app = createApp(loadConfig({
+    NODE_ENV: "test",
+    PORT: "3000",
+    LOG_LEVEL: "error",
+    CORS_ORIGINS: "http://127.0.0.1:3002",
+  }), logger);
+  const server = createServer(app);
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  if (address === null || typeof address === "string") throw new Error("expected a TCP address");
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const allowed = await fetch(`${base}/health`, { headers: { origin: "http://127.0.0.1:3002" } });
+    assert.equal(allowed.headers.get("access-control-allow-origin"), "http://127.0.0.1:3002");
+    const denied = await fetch(`${base}/health`, { headers: { origin: "http://evil.example" } });
+    assert.equal(denied.headers.get("access-control-allow-origin"), null);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("config rejects a missing port", () => {
   assert.throws(() => loadConfig({ NODE_ENV: "development" }), /Invalid environment: PORT/);
 });

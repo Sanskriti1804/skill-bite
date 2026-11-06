@@ -11,6 +11,22 @@ export function createApp(config: AppConfig, logger: Logger, deps?: ApiDeps) {
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
 
+  const allowedOrigins = new Set(config.CORS_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean));
+  app.use((req, res, next) => {
+    const origin = req.header("origin");
+    if (origin && allowedOrigins.has(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    }
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
+
   app.use((req, res, next) => {
     const started = Date.now();
     res.on("finish", () => {

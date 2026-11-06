@@ -210,6 +210,7 @@ Also loaded by `backend/src/config.ts`. Values stay in the server environment:
 | `GOOGLE_CLIENT_ID` | For live Google sign-in | Audience of the identity token. Empty means Google sign-in returns 401. |
 | `MEDIA_ROOT` | No | Default `./var/media`. |
 | `PUSH_TOKEN_KEY` | For device registration | At least 16 characters. Encrypts stored device tokens. |
+| `CORS_ORIGINS` | No | Comma-separated browser origins allowed to call the API. Empty allows no browser origin. |
 
 Email delivery credentials and production object-storage credentials are not loaded. Those providers are not chosen. The Google identity-token check does not use a client secret.
 

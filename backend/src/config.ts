@@ -16,6 +16,7 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   MEDIA_ROOT: z.string().default("./var/media"),
   PUSH_TOKEN_KEY: z.string().min(16).optional(),
+  CORS_ORIGINS: z.string().default(""),
 });
 
 export type AppConfig = z.infer<typeof schema>;
