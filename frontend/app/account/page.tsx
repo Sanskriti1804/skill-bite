@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, Dialog, ErrorState } from "../../components/ui";
 import { useSession } from "../../components/session";
-import { api } from "../../lib/api";
+import { auth } from "../../lib/services/auth";
 
 export default function AccountPage() {
   const session = useSession();
@@ -15,7 +15,7 @@ export default function AccountPage() {
     if (!pending) return;
     setError("");
     try {
-      await api("/api/v1/me/role", { method: "PATCH", token: session.token, body: { role: pending } });
+      await auth.switchRole(session.token, pending);
       session.setSession({ token: session.token, refreshToken: session.refreshToken, role: pending });
       setMessage(`Active role is ${pending}. Existing progress and content stay.`);
       setPending(null);
@@ -32,7 +32,7 @@ export default function AccountPage() {
       <p>Active role: {session.role || "Unknown"}</p>
       <Button onClick={() => setPending("USER")}>Use as User</Button>
       <Button onClick={() => setPending("CREATOR")}>Use as Creator</Button>
-      <Button onClick={session.clear}>Sign out</Button>
+      <Button onClick={() => void auth.logout(session.token).finally(session.clear)}>Sign out</Button>
       {message ? <p>{message}</p> : null}
       {error ? <ErrorState>{error}</ErrorState> : null}
       {pending ? (

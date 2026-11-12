@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, ErrorState, Field } from "../../components/ui";
 import { useSession } from "../../components/session";
-import { api, type Session } from "../../lib/api";
+import { auth } from "../../lib/services/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,8 +19,8 @@ export default function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      const result = await api<Session>("/api/v1/auth/login", { method: "POST", body: { email, password } });
-      const me = await api<{ role: string }>("/api/v1/me", { token: result.accessToken });
+      const result = await auth.login(email, password);
+      const me = await auth.me(result.accessToken);
       session.setSession({ token: result.accessToken, refreshToken: result.refreshToken, role: me.role });
       router.push(me.role === "ADMIN" ? "/admin" : me.role === "CREATOR" ? "/creator" : "/");
     } catch (caught) {

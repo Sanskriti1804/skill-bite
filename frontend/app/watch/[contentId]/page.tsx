@@ -24,11 +24,21 @@ export default function WatchPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api<Content>(`/api/v1/content/${params.contentId}`)
+    api<Content>(`/api/v1/content/${params.contentId}`, { token: session.token || undefined })
       .then(setContent)
       .catch((caught) => setError(caught instanceof Error ? caught.message : "Unavailable"))
       .finally(() => setLoading(false));
-  }, [params.contentId]);
+  }, [params.contentId, session.token]);
+
+  useEffect(() => {
+    if (!session.token) return;
+    api<{ items: { videoContentId: string; lastPositionSeconds: number; completedAt: string | null }[] }>("/api/v1/me/progress", { token: session.token })
+      .then((result) => {
+        const row = result.items.find((item) => item.videoContentId === params.contentId);
+        if (row) setPosition(row.lastPositionSeconds);
+      })
+      .catch(() => undefined);
+  }, [params.contentId, session.token]);
 
   async function save(videoId: string) {
     if (!session.token) return;
