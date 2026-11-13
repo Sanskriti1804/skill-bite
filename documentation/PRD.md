@@ -406,7 +406,7 @@ Do not add payment, comment, streak, recommendation, or share-analytics storage.
 |---|---|---|
 | Google sign-in | Identity token checked on the server | Required |
 | Email verification and password recovery | Delivery mechanism not named in the BRD | Required behavior; provider not chosen |
-| Video storage | Local files in development. Object storage and CDN in production | Required; production provider not chosen |
+| Video storage | Local files when Cloudinary env is unset. Cloudinary object/CDN when configured | Required; Cloudinary chosen first |
 | Push | Device token stored. FCM is an example only | Required capability; provider not chosen |
 | Captions | Upload or generate, then review | Required capability; generator not chosen |
 | Hosting | Not selected | Open (OD-16) |

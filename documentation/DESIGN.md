@@ -1,6 +1,6 @@
 # SkillBite — Design
 
-**Status:** Draft. No prior `DESIGN.md`, UI, or design assets exist in the repository.
+**Status:** Draft design system. Next.js UI lives under `frontend/app/` and `frontend/components/`. Expo UI lives under `mobile/`.
 
 **Source of truth:** `PRD.md`, which follows `SkillBite.md` and ADR 0002. This file specifies how approved screens behave. It does not add product features.
 

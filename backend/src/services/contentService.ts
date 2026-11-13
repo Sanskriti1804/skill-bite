@@ -58,7 +58,12 @@ export function createContentService(access: Access) {
       if (!mime.startsWith("video/")) throw new HttpError(400, "validation", "File must be a video");
       const bytes = Buffer.from(data, "base64");
       if (bytes.length === 0) throw new HttpError(400, "validation", "File is empty");
-      const reference = await deps.storage.saveVideo(content.contentId, bytes);
+      let reference: string;
+      try {
+        reference = await deps.storage.saveVideo(content.contentId, bytes);
+      } catch {
+        throw new HttpError(502, "internal_error", "Internal error");
+      }
       await prisma.videoDetails.update({
         where: { contentId: content.contentId },
         data: {
@@ -77,7 +82,11 @@ export function createContentService(access: Access) {
         const auth = await getAuth();
         if (auth.role !== "ADMIN" && auth.userId !== content.creatorId) throw new HttpError(403, "forbidden", "Not allowed");
       }
-      return deps.storage.read(content.video.mediaReference);
+      try {
+        return await deps.storage.read(content.video.mediaReference);
+      } catch {
+        throw new HttpError(404, "not_found", "Not found");
+      }
     },
 
     async publishVideo(auth: Parameters<typeof ownContent>[0], contentId: string) {
@@ -221,6 +230,14 @@ export function createContentService(access: Access) {
 
     async categories() {
       const items = await prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
+      return { items };
+    },
+
+    async tags() {
+      const items = await prisma.tag.findMany({
+        orderBy: { name: "asc" },
+        select: { tagId: true, name: true, slug: true },
+      });
       return { items };
     },
 

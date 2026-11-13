@@ -1,6 +1,6 @@
 # Database
 
-**Status:** Draft physical model. No migrations, Prisma schema, or database exists in the repository.
+**Status:** Physical model implemented in `backend/prisma/schema.prisma` with versioned migrations under `backend/prisma/migrations/`.
 
 The logical model is [SkillBite-ERD.md](../SkillBite-ERD.md). That file owns entity names, relationships, and the token lifecycle. This file maps that model to PostgreSQL. It does not replace the ERD. Known BRD and ERD gaps are also recorded in [validation.md](validation.md). The partial Mermaid files once under `documentation/database/diagrams/` are not in the tree. `SkillBite-ERD.md` is the logical diagram. The diagram in this file is the physical relationship sketch.
 

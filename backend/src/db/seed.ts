@@ -18,4 +18,16 @@ export async function seedReferenceData(prisma: PrismaClient): Promise<void> {
     update: { name: "Trending", isActive: true },
     create: { name: "Trending", slug: "trending", isActive: true },
   });
+  const tags = [
+    { name: "Tutorial", slug: "tutorial" },
+    { name: "Fundamentals", slug: "fundamentals" },
+    { name: "Practice", slug: "practice" },
+  ];
+  for (const tag of tags) {
+    await prisma.tag.upsert({
+      where: { slug: tag.slug },
+      update: { name: tag.name },
+      create: tag,
+    });
+  }
 }

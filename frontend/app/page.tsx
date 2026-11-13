@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, LoadingState, viewState } from "../components/ui";
 import { useSession } from "../components/session";
-import { api } from "../lib/api";
+import { content as contentApi } from "../lib/services/content";
+import { learning } from "../lib/services/learning";
 
 type Item = { contentId: string; title: string; contentType: string };
 type Category = { slug: string; name: string };
@@ -20,14 +21,14 @@ export default function BrowsePage() {
   const [resume, setResume] = useState("");
 
   useEffect(() => {
-    api<{ items: Category[] }>("/api/v1/categories")
+    contentApi.categories()
       .then((result) => setCategories(result.items))
       .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
     if (!session.token) return;
-    api<{ items: { videoContentId: string }[] }>("/api/v1/me/progress", { token: session.token })
+    learning.progress(session.token)
       .then((result) => setResume(result.items[0]?.videoContentId ?? ""))
       .catch(() => setResume(""));
   }, [session.token]);
@@ -38,7 +39,7 @@ export default function BrowsePage() {
     if (category) params.set("category", category);
     params.set("sort", "newest");
     setLoading(true);
-    api<{ items: Item[] }>(`/api/v1/content?${params.toString()}`)
+    contentApi.search(params)
       .then((result) => { setItems(result.items); setFailed(false); })
       .catch(() => setFailed(true))
       .finally(() => setLoading(false));

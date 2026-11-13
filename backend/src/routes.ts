@@ -143,6 +143,10 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
   router.get("/categories", asyncHandler(async (_req, res) => {
     res.status(200).json(await content.categories());
   }));
+  router.get("/tags", asyncHandler(async (req, res) => {
+    await requireAuth(req);
+    res.status(200).json(await content.tags());
+  }));
   router.get("/content", asyncHandler(async (req, res) => {
     res.status(200).json(await content.search(req.query));
   }));

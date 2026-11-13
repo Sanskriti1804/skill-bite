@@ -1,22 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { Button, ErrorState, Field } from "../../../components/ui";
+import { useEffect, useState } from "react";
+import { Button, EmptyState, ErrorState, Field, LoadingState, StatusBadge } from "../../../components/ui";
 import { useSession } from "../../../components/session";
-import { api } from "../../../lib/api";
+import { admin } from "../../../lib/services/admin";
+import { content as contentApi } from "../../../lib/services/content";
+
+type ContentRow = { contentId: string; title: string; contentType: string; status?: string };
 
 export default function AdminContentPage() {
   const session = useSession();
+  const [items, setItems] = useState<ContentRow[]>([]);
   const [contentId, setContentId] = useState("");
+  const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  if (session.role !== "ADMIN") return <ErrorState>Admin access is required.</ErrorState>;
+  const [loading, setLoading] = useState(true);
 
-  async function act(action: "delete" | "restore") {
+  async function load() {
+    setLoading(true);
     setError("");
     try {
-      const result = await api<{ status: string }>(`/api/v1/admin/content/${contentId}/${action}`, { method: "POST", token: session.token });
-      setMessage(result.status);
+      const params = new URLSearchParams({ sort: "newest" });
+      if (query.trim()) params.set("q", query.trim());
+      const result = await contentApi.search(params);
+      setItems(result.items.map((item) => ({ ...item, status: "PUBLISHED" })));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load content");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!session.ready || session.role !== "ADMIN") return;
+    void load();
+  }, [session.ready, session.role]);
+
+  if (!session.ready) return <LoadingState />;
+  if (session.role !== "ADMIN") return <ErrorState>Admin access is required.</ErrorState>;
+
+  async function act(action: "delete" | "restore", id: string) {
+    setError("");
+    setMessage("");
+    try {
+      const result = action === "delete"
+        ? await admin.removeContent(session.token, id)
+        : await admin.restoreContent(session.token, id);
+      setMessage(`${id}: ${result.status}`);
+      await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not update content");
     }
@@ -25,11 +57,26 @@ export default function AdminContentPage() {
   return (
     <div className="stack">
       <h1>Content</h1>
-      <p className="muted">The API does not list every draft. Enter a content id to remove or restore it. Removed content stays recoverable.</p>
+      <p className="muted">Published content is listed below. Removed content stays recoverable by id.</p>
+      <Field label="Search published content" value={query} onChange={setQuery} />
+      <Button onClick={() => void load()}>Refresh list</Button>
+      {loading ? <LoadingState /> : null}
+      {!loading && !items.length ? <EmptyState>No published content matched.</EmptyState> : null}
+      {items.map((item) => (
+        <article className="card" key={item.contentId}>
+          <p>{item.title} <StatusBadge status={item.status ?? "PUBLISHED"} /> <span className="muted">{item.contentType}</span></p>
+          <p className="muted">{item.contentId}</p>
+          <div className="row">
+            <Button danger onClick={() => void act("delete", item.contentId)}>Remove</Button>
+            <Button onClick={() => setContentId(item.contentId)}>Use id</Button>
+          </div>
+        </article>
+      ))}
+      <h2>Recover by id</h2>
       <Field label="Content id" value={contentId} onChange={setContentId} />
       <div className="row">
-        <Button danger onClick={() => void act("delete")}>Remove</Button>
-        <Button onClick={() => void act("restore")}>Restore</Button>
+        <Button danger disabled={!contentId.trim()} onClick={() => void act("delete", contentId.trim())}>Remove</Button>
+        <Button disabled={!contentId.trim()} onClick={() => void act("restore", contentId.trim())}>Restore</Button>
       </div>
       {message ? <p>{message}</p> : null}
       {error ? <ErrorState>{error}</ErrorState> : null}

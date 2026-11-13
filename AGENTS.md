@@ -8,10 +8,10 @@ SkillBite is a college microlearning project. Current facts are in `MEMORY.md`. 
 - `SkillBite-ERD.md` — logical ERD. It is behind ADR 0002 on lesson progress, video reuse, and attachments. Do not treat the old per-video progress key as current.
 - `documentation/decisions/0002-confirmed-answers.md` — accepted answers. It wins where it explicitly resolves an open BRD decision.
 - `documentation/PRD.md` — product scope. Do not add a feature it leaves open or out of scope.
-- `documentation/DESIGN.md` — UI rules for screens that are in the PRD. No UI code exists yet.
-- `documentation/architecture.md` — system boundaries. ADR 0002 replaces its “stack not accepted” sentence for the implementation baseline. The hosting provider is still unchosen.
-- `documentation/database.md` — physical PostgreSQL model. The ERD remains the logical model.
-- `documentation/api.md` — HTTP contract. Only `GET /health` is implemented.
+- `documentation/DESIGN.md` — UI rules for screens that are in the PRD. Next.js and Expo clients exist under `frontend/`.
+- `documentation/architecture.md` — system boundaries. ADR 0002 is the implementation baseline. The hosting provider is still unchosen.
+- `documentation/database.md` — physical PostgreSQL model. Prisma schema and migrations live under `backend/prisma/`. The ERD remains the logical model.
+- `documentation/api.md` — HTTP contract. `GET /health` and the documented `/api/v1` routes are implemented.
 
 ## Implementation requests
 
@@ -26,7 +26,7 @@ When the user asks for a numbered implementation phase, follow `.cursor/rules/im
 - Do not treat `last_position_seconds` as proof that the completion threshold was met. Do not recalculate existing completions when the admin changes the threshold.
 - Do not add payments, comments, streaks, recommendations, or share-analytics tables.
 - The implementation baseline is ADR 0002 (Q-14). Do not invent a different stack. The hosting provider is not chosen.
-- `backend/`, `frontend/`, and `ai-input/` are the intended directories.
+- `backend/`, `frontend/`, `mobile/`, and `ai-input/` are the intended directories.
 - Account status is `ACTIVE`, `SUSPENDED`, or `DEACTIVATED`. Children under eight require parental consent. Do not add other age limits.
 - Do not add account recovery that reconnects progress after a new registration. Password recovery stays. Do not invent a retention period. Deleted content stays recoverable by the admin.
 - Do not claim tests passed or that the project is production-ready unless you ran the check and saw the result.
@@ -53,12 +53,11 @@ Do not introduce a second language or a second API style. Do not add `any` to ge
 
 ## Folder structure
 
-- `backend/` — API, domain logic, database access, and backend tests. `src/` is application code. `test/` is `node:test` files run by `npm test`.
-- `frontend/` — client UI and frontend tests. The directory is not created yet. Do not invent it until a client task needs it.
+- `backend/` — API, domain logic, database access, and backend tests. `src/` is application code. `test/` is `node:test` files run by `npm test`. Prisma lives under `backend/prisma/`.
+- `frontend/` — Next.js learner/creator/admin web app and its tests.
+- `mobile/` — Expo React Native learner app (Android and iOS).
 - `ai-input/` — reference material for AI-assisted work. Do not put runtime code there.
 - `documentation/` — design notes. Product decisions stay in the authoritative files above.
-
-Prisma schema and migrations belong under `backend/` when a database task starts. Do not add them early.
 
 ## Component reuse
 
@@ -66,7 +65,7 @@ Shared UI follows `documentation/DESIGN.md`: one button, field, status badge, co
 
 ## Dependencies
 
-Backend dependencies today are `express`, `zod`, and `dotenv`. Dev dependencies are TypeScript, `tsx`, and the Node and Express types. Add a package only when an approved feature needs it, and add the lockfile change with it. Do not add a web framework, ORM, or test runner besides Prisma (when migrations start) and the ADR 0002 stack. Do not upgrade packages as a side effect.
+Backend runtime dependencies include `express`, `zod`, `dotenv`, `@prisma/client`, `argon2`, and `jose`. Dev dependencies include TypeScript, `tsx`, Prisma CLI, `embedded-postgres`, and `newman`. Frontend uses Next.js and React; mobile uses Expo. Add a package only when an approved feature needs it, and add the lockfile change with it. Do not invent a second stack. Do not upgrade packages as a side effect.
 
 ## Type safety
 

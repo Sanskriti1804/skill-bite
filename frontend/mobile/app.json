@@ -1,8 +1,0 @@
-{
-  "expo": {
-    "name": "SkillBite",
-    "slug": "skillbite",
-    "platforms": ["android", "web"],
-    "web": { "bundler": "metro" }
-  }
-}

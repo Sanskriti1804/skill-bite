@@ -9,11 +9,13 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/**/*.ts",
+    "test:postman": "tsx scripts/run-postman.ts",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
     "argon2": "^0.43.0",
+    "cloudinary": "^2.11.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jose": "^6.0.10",

@@ -7,7 +7,7 @@ export const learning = {
   progress: (token: string) => api<{ items: { videoContentId: string; lastPositionSeconds: number; completedAt: string | null }[] }>("/api/v1/me/progress", { token }),
   saveProgress: (token: string, contentId: string, lastPositionSeconds: number) => api<{ lastPositionSeconds: number; completedAt: string | null }>(`/api/v1/videos/${contentId}/progress`, { method: "PUT", token, body: { lastPositionSeconds } }),
   courseProgress: (token: string, contentId: string) => api<{ totalDurationSeconds: number; completedDurationSeconds: number }>(`/api/v1/courses/${contentId}/progress`, { token }),
-  notifications: (token: string) => api<{ items: { notificationId: string }[] }>("/api/v1/notifications", { token }),
+  notifications: (token: string) => api<{ items: { notificationId: string; title?: string | null; body?: string | null; readAt: string | null }[] }>("/api/v1/notifications", { token }),
   markRead: (token: string, notificationId: string) => api(`/api/v1/notifications/${notificationId}/read`, { method: "POST", token }),
   registerDevice: (token: string, body: { platform: string; pushToken: string }) => api<{ deviceId: string }>("/api/v1/devices", { method: "POST", token, body }),
 };
