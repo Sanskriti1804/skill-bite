@@ -7,13 +7,14 @@ import { Icon } from "../../icons";
 import { contentApi, type Tag } from "../../services/content";
 import { useSession } from "../../session";
 import { colors, radii, space } from "../../theme";
+import type { Category } from "../../types";
 import { Banner, Button, Field, LoadingState, Screen, Title } from "../../ui";
-import type { CreatorStackParamList } from "../../navigation";
+import type { RootStackParamList } from "../../navigation";
 
-type Props = NativeStackScreenProps<CreatorStackParamList, "ShortEditor">;
+type Props = NativeStackScreenProps<RootStackParamList, "ShortEditor">;
 
 export function ShortEditorScreen({ navigation, route }: Props) {
-  const { session } = useSession();
+  const { session, ensurePublisher } = useSession();
   const existingId = route.params.contentId;
   const [contentId, setContentId] = useState(existingId ?? "");
   const [title, setTitle] = useState("");
@@ -21,7 +22,9 @@ export function ShortEditorScreen({ navigation, route }: Props) {
   const [sources, setSources] = useState("Original creator material");
   const [keywords, setKeywords] = useState("tutorial, short-form");
   const [tags, setTags] = useState<Tag[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [tagId, setTagId] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [status, setStatus] = useState("DRAFT");
   const [mediaLabel, setMediaLabel] = useState("");
   const [duration, setDuration] = useState(60);
@@ -31,11 +34,21 @@ export function ShortEditorScreen({ navigation, route }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    void ensurePublisher().catch((caught) => {
+      setError(caught instanceof Error ? caught.message : "Could not open editor");
+      setLoading(false);
+    });
+  }, [ensurePublisher]);
+
+  useEffect(() => {
     if (!session?.token) return;
-    contentApi.tags(session.token)
-      .then((result) => {
-        setTags(result.items);
-        if (!tagId && result.items[0]) setTagId(result.items[0].tagId);
+    Promise.all([contentApi.tags(session.token), contentApi.categories()])
+      .then(([tagResult, categoryResult]) => {
+        setTags(tagResult.items);
+        setCategories(categoryResult.items);
+        if (!tagId && tagResult.items[0]) setTagId(tagResult.items[0].tagId);
+        const firstCategory = categoryResult.items.find((item) => item.categoryId && item.slug !== "trending");
+        if (!categoryId && firstCategory?.categoryId) setCategoryId(firstCategory.categoryId);
       })
       .catch(() => undefined);
   }, [session?.token]);
@@ -60,11 +73,16 @@ export function ShortEditorScreen({ navigation, route }: Props) {
       .finally(() => setLoading(false));
   }, [existingId, session?.token, session?.userId]);
 
+  useEffect(() => {
+    if (!existingId) setLoading(false);
+  }, [existingId]);
+
   async function run(work: () => Promise<void>) {
     if (!session?.token || !session.userId) return;
     setBusy(true);
     setError("");
     try {
+      await ensurePublisher();
       await work();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Request failed");
@@ -73,10 +91,10 @@ export function ShortEditorScreen({ navigation, route }: Props) {
     }
   }
 
-  if (!session || (session.role !== "CREATOR" && session.role !== "ADMIN")) {
+  if (!session) {
     return (
       <Screen>
-        <Banner>Switch to Creator on Account to use Studio.</Banner>
+        <Banner>Sign in to upload shorts.</Banner>
         <Button onPress={() => navigation.goBack()}>Back</Button>
       </Screen>
     );
@@ -88,9 +106,9 @@ export function ShortEditorScreen({ navigation, route }: Props) {
     <Screen>
       <Pressable style={styles.back} onPress={() => navigation.goBack()}>
         <Icon name="back" size={20} color={colors.ink} />
-        <Text style={styles.backText}>Studio</Text>
+        <Text style={styles.backText}>Create</Text>
       </Pressable>
-      <Title>{contentId ? "Edit short tutorial" : "New short tutorial"}</Title>
+      <Title>{contentId ? "Edit short" : "New short"}</Title>
       <Text style={styles.sub}>Status: {status}. Published shorts are not edited in place — take down, revise, then publish again.</Text>
 
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 40 }}>
@@ -99,7 +117,25 @@ export function ShortEditorScreen({ navigation, route }: Props) {
         <Field label="Sources" value={sources} onChangeText={setSources} />
         <Field label="Keywords" value={keywords} onChangeText={setKeywords} hint="Comma-separated topics for search." />
 
-        <Text style={styles.label}>Topic tag</Text>
+        <Text style={styles.label}>Category</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {categories.map((category) => {
+            const selected = category.categoryId === categoryId;
+            return (
+              <Pressable
+                key={category.slug}
+                style={[styles.chip, selected ? styles.chipOn : null]}
+                onPress={() => {
+                  if (category.categoryId) setCategoryId(category.categoryId);
+                }}
+              >
+                <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{category.name}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <Text style={styles.label}>Engagement label</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           {tags.map((tag) => {
             const selected = tag.tagId === tagId;
@@ -126,6 +162,7 @@ export function ShortEditorScreen({ navigation, route }: Props) {
                 keywords,
                 durationSeconds: picked.durationSeconds,
                 tagIds: tagId ? [tagId] : [],
+                categoryIds: categoryId ? [categoryId] : [],
               });
               id = created.contentId;
               setContentId(id);
@@ -179,6 +216,7 @@ export function ShortEditorScreen({ navigation, route }: Props) {
                 keywords,
                 durationSeconds: duration,
                 tagIds: tagId ? [tagId] : [],
+                categoryIds: categoryId ? [categoryId] : [],
               });
               setContentId(created.contentId);
               setStatus(created.status);

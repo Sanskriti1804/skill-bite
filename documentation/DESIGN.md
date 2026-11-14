@@ -103,11 +103,11 @@ The active role chooses the shell. There is no Admin item on the User or Creator
 
 **User (mobile and learner web):** Browse, Search, Bookmarks, History (continue learning lives here; recently played means videos), Notifications, Account. Video and course are pushed on the stack or opened as pages, not extra tabs.
 
-**Creator:** Content list (own drafts and published items), editor, Account with the switch back to User. Publishing is the primary action on the editor, not a separate approval inbox.
+**Mobile shell:** Splash, then first-run onboarding, then Home / Create / Explore / Profile. Home is the short reel feed. Create uploads shorts and playlists (courses). Explore is search and category discovery. Profile lists own drafts and published items. Mobile visual theme is dark navy with teal accent (`mobile/src/theme.ts`). No Creator/User switch control on mobile; publish still uses the Creator API role under the hood.
 
 **Admin (web portal):** Users, Content, Categories and tags, Settings, Analytics, Audit. Analytics may show a holding state until OD-09 names the metrics. Do not invent charts.
 
-**Role switch:** Account page only. Choices are User and Creator. Confirm before switching. After the switch, show that role’s navigation. Progress and content remain; the other role’s screens are not shown at the same time.
+**Role switch:** Still available on the web account surface. Mobile hides the switch and keeps one combined explore+create experience.
 
 **Share:** Action on an eligible video or course. It invokes the platform share sheet or copies the stable URL. It is not a destination tab.
 
@@ -171,7 +171,7 @@ Motion only explains a change of place or state.
 
 | Client | Behavior |
 |---|---|
-| Phone (Android, iOS) | Single column. Player full width. Course outline below the player or in a sheet. Bottom navigation for the User tabs. Creator uses the same shell with creator destinations. |
+| Phone (Android, iOS) | Single column. Reels-style Home feed. Bottom tabs: Home, Explore, Create, Profile. Playlists are courses in the API. Saved, History, and Alerts open from Profile. |
 | Tablet | Same components. Content column grows. Outline may sit beside the player from 720px up. |
 | Learner web | Column max 1120px. From 960px, video and outline sit side by side: player first, outline second. Search and category chips wrap. |
 | Admin web | From 1024px, start navigation plus main pane. Below that, navigation collapses into a menu button. Tables become stacked rows under 720px so status and actions stay visible. |

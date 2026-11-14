@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api } from "../api";
 import { Icon } from "../icons";
 import { useSession } from "../session";
 import { colors, radii, space } from "../theme";
 import type { NotificationItem } from "../types";
 import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
+import type { RootStackParamList } from "../navigation";
 
-export function NotificationsScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, "Notifications">;
+
+export function NotificationsScreen({ navigation }: Props) {
   const { session } = useSession();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +53,10 @@ export function NotificationsScreen() {
 
   return (
     <Screen>
+      <Pressable style={styles.back} onPress={() => navigation.goBack()}>
+        <Icon name="back" size={20} color={colors.ink} />
+        <Text style={styles.backText}>Profile</Text>
+      </Pressable>
       <Title>Alerts</Title>
       <Text style={styles.sub}>Learning notices stay here. Push delivery is deferred until a provider is chosen.</Text>
       {!session ? <Banner tone="info">Sign in to see alerts.</Banner> : null}
@@ -90,6 +98,8 @@ export function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
+  back: { flexDirection: "row", alignItems: "center", gap: 6 },
+  backText: { color: colors.ink, fontWeight: "700" },
   sub: { color: colors.inkMuted, fontSize: 13, marginTop: -8 },
   pushBtn: {
     minHeight: 44,

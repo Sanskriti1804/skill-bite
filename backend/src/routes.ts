@@ -63,6 +63,10 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
     const session = await requireAuth(req);
     res.status(200).json(await admin.me(session.userId));
   }));
+  router.get("/me/content", asyncHandler(async (req, res) => {
+    const session = await requireAuth(req);
+    res.status(200).json(await content.myContent(session.userId));
+  }));
   router.patch("/me/role", asyncHandler(async (req, res) => {
     const session = await requireAuth(req);
     requireRole(session, ["USER", "CREATOR"]);

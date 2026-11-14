@@ -1,11 +1,21 @@
 import { StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
-/** Lightweight top/bottom scrims without adding a gradient dependency. */
 export function LinearishScrim() {
   return (
     <>
-      <View pointerEvents="none" style={styles.top} />
-      <View pointerEvents="none" style={styles.bottom} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(5,8,15,0.55)", "transparent"]}
+        style={styles.top}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["transparent", "rgba(5,8,15,0.35)", "rgba(5,8,15,0.88)"]}
+        locations={[0, 0.35, 1]}
+        style={styles.bottom}
+      />
+      <View pointerEvents="none" style={styles.edge} />
     </>
   );
 }
@@ -16,15 +26,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 120,
-    backgroundColor: "rgba(14,13,12,0.35)",
+    height: 140,
   },
   bottom: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 280,
-    backgroundColor: "rgba(14,13,12,0.62)",
+    height: 320,
+  },
+  edge: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 2,
+    backgroundColor: "rgba(46,230,197,0.15)",
   },
 });

@@ -8,9 +8,9 @@ import { contentApi, type Tag } from "../../services/content";
 import { useSession } from "../../session";
 import { colors, radii, space } from "../../theme";
 import { Banner, Button, Field, LoadingState, Screen, Title } from "../../ui";
-import type { CreatorStackParamList } from "../../navigation";
+import type { RootStackParamList } from "../../navigation";
 
-type Props = NativeStackScreenProps<CreatorStackParamList, "CourseStudio">;
+type Props = NativeStackScreenProps<RootStackParamList, "CourseStudio">;
 
 type Chapter = {
   moduleId: string;
@@ -20,7 +20,7 @@ type Chapter = {
 };
 
 export function CourseStudioScreen({ navigation, route }: Props) {
-  const { session } = useSession();
+  const { session, ensurePublisher } = useSession();
   const existingId = route.params.contentId;
   const [contentId, setContentId] = useState(existingId ?? "");
   const [seriesTitle, setSeriesTitle] = useState("");
@@ -34,6 +34,13 @@ export function CourseStudioScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(!!existingId);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    void ensurePublisher().catch((caught) => {
+      setError(caught instanceof Error ? caught.message : "Could not open playlist editor");
+      setLoading(false);
+    });
+  }, [ensurePublisher]);
 
   useEffect(() => {
     if (!session?.token) return;
@@ -71,15 +78,20 @@ export function CourseStudioScreen({ navigation, route }: Props) {
           updatedAt: new Date().toISOString(),
         });
       })
-      .catch((caught) => setError(caught instanceof Error ? caught.message : "Could not load series"))
+      .catch((caught) => setError(caught instanceof Error ? caught.message : "Could not load playlist"))
       .finally(() => setLoading(false));
   }, [existingId, session?.token, session?.userId]);
+
+  useEffect(() => {
+    if (!existingId) setLoading(false);
+  }, [existingId]);
 
   async function run(work: () => Promise<void>) {
     if (!session?.token || !session.userId) return;
     setBusy(true);
     setError("");
     try {
+      await ensurePublisher();
       await work();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Request failed");
@@ -88,10 +100,10 @@ export function CourseStudioScreen({ navigation, route }: Props) {
     }
   }
 
-  if (!session || (session.role !== "CREATOR" && session.role !== "ADMIN")) {
+  if (!session) {
     return (
       <Screen>
-        <Banner>Switch to Creator on Account to use Studio.</Banner>
+        <Banner>Sign in to manage playlists.</Banner>
         <Button onPress={() => navigation.goBack()}>Back</Button>
       </Screen>
     );
@@ -105,15 +117,15 @@ export function CourseStudioScreen({ navigation, route }: Props) {
     <Screen>
       <Pressable style={styles.back} onPress={() => navigation.goBack()}>
         <Icon name="back" size={20} color={colors.ink} />
-        <Text style={styles.backText}>Studio</Text>
+        <Text style={styles.backText}>Create</Text>
       </Pressable>
-      <Title>{contentId ? "Manage series" : "New series"}</Title>
+      <Title>{contentId ? "Manage playlist" : "New playlist"}</Title>
       <Text style={styles.sub}>
-        Chapters group topics. Each topic is one short tutorial video. Learners may watch topics in any order.
+        Sections group topics. Each topic is one short. Viewers may watch topics in any order.
       </Text>
 
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 48 }}>
-        <Field label="Series title" value={seriesTitle} onChangeText={setSeriesTitle} />
+        <Field label="Playlist title" value={seriesTitle} onChangeText={setSeriesTitle} />
         <Button
           primary
           disabled={busy || !seriesTitle.trim()}
@@ -127,7 +139,7 @@ export function CourseStudioScreen({ navigation, route }: Props) {
                 kind: "COURSE",
                 updatedAt: new Date().toISOString(),
               });
-              setMessage("Series draft updated.");
+              setMessage("Playlist draft updated.");
               return;
             }
             const created = await contentApi.createCourse(session.token, seriesTitle);
@@ -139,14 +151,14 @@ export function CourseStudioScreen({ navigation, route }: Props) {
               kind: "COURSE",
               updatedAt: new Date().toISOString(),
             });
-            setMessage("Series draft created. Add chapters next.");
+            setMessage("Playlist draft created. Add sections next.");
           })}
         >
-          {contentId ? "Save series title" : "Create series draft"}
+          {contentId ? "Save playlist title" : "Create playlist draft"}
         </Button>
 
-        <Text style={styles.section}>Chapters</Text>
-        <Field label="Chapter name" value={chapterTitle} onChangeText={setChapterTitle} hint="Example: Getting started" />
+        <Text style={styles.section}>Sections</Text>
+        <Field label="Section name" value={chapterTitle} onChangeText={setChapterTitle} hint="Example: Getting started" />
         <Button
           disabled={busy || !contentId || !chapterTitle.trim()}
           onPress={() => void run(async () => {
@@ -156,10 +168,10 @@ export function CourseStudioScreen({ navigation, route }: Props) {
             setChapters((current) => [...current, next]);
             setSelectedModuleId(created.moduleId);
             setChapterTitle("");
-            setMessage(`Chapter ${position} added.`);
+            setMessage(`Section ${position} added.`);
           })}
         >
-          Add chapter
+          Add section
         </Button>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -173,8 +185,8 @@ export function CourseStudioScreen({ navigation, route }: Props) {
           })}
         </ScrollView>
 
-        <Text style={styles.section}>Topics in this chapter</Text>
-        {!selectedChapter ? <Banner tone="info">Add or select a chapter first.</Banner> : null}
+        <Text style={styles.section}>Topics in this section</Text>
+        {!selectedChapter ? <Banner tone="info">Add or select a section first.</Banner> : null}
         {selectedChapter ? (
           <>
             <Field label="Topic name" value={topicTitle} onChangeText={setTopicTitle} hint="One short tutorial inside the chapter" />
@@ -230,13 +242,13 @@ export function CourseStudioScreen({ navigation, route }: Props) {
                   updatedAt: new Date().toISOString(),
                 });
                 setTopicTitle("");
-                setMessage("Topic short uploaded and linked to this chapter.");
+                setMessage("Topic short uploaded and linked to this section.");
               })}
             >
               <Icon name="video" size={22} color={colors.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.uploadTitle}>Upload topic short</Text>
-                <Text style={styles.uploadMeta}>Creates the short video and attaches it as this chapter topic.</Text>
+                <Text style={styles.uploadMeta}>Creates the short and attaches it as this section topic.</Text>
               </View>
             </Pressable>
 
@@ -261,10 +273,10 @@ export function CourseStudioScreen({ navigation, route }: Props) {
             }
             const result = await contentApi.publishCourse(session.token, contentId);
             await updateStudioDraftStatus(session.userId, contentId, result.status);
-            setMessage("Series published. Topic shorts are live in the Learn feed.");
+            setMessage("Playlist published. Topic shorts are live on Home.");
           })}
         >
-          Publish series
+          Publish playlist
         </Button>
 
         {message ? <Banner tone="info">{message}</Banner> : null}

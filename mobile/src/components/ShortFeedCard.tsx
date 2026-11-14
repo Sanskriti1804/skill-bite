@@ -19,6 +19,13 @@ type Props = {
   onProgress?: (seconds: number) => void;
 };
 
+function isNew(publishedAt?: string | null): boolean {
+  if (!publishedAt) return false;
+  const published = new Date(publishedAt).getTime();
+  if (Number.isNaN(published)) return false;
+  return Date.now() - published < 7 * 24 * 60 * 60 * 1000;
+}
+
 export function ShortFeedCard({
   item,
   height,
@@ -32,6 +39,11 @@ export function ShortFeedCard({
   const videoRef = useRef<Video | null>(null);
   const [paused, setPaused] = useState(false);
   const isVideo = item.contentType === "VIDEO";
+  const labels = [
+    ...(isNew(item.publishedAt) ? [{ name: "New", slug: "new" }] : []),
+    ...(item.categories ?? []),
+    ...(item.tags ?? []),
+  ].slice(0, 3);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +78,7 @@ export function ShortFeedCard({
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.courseSurface]}>
           <Icon name="course" size={64} color={colors.feedMuted} />
-          <Text style={styles.courseHint}>Course · tap to open lessons</Text>
+          <Text style={styles.courseHint}>Playlist · tap to open</Text>
         </View>
       )}
 
@@ -91,16 +103,20 @@ export function ShortFeedCard({
           <View style={styles.badgeRow}>
             <View style={styles.badge}>
               <Icon name={isVideo ? "video" : "course"} size={14} color={colors.accentInk} />
-              <Text style={styles.badgeText}>{isVideo ? "Micro lesson" : "Course"}</Text>
+              <Text style={styles.badgeText}>{isVideo ? "Short" : "Playlist"}</Text>
             </View>
-            <Text style={styles.brand}>SkillBite</Text>
+            {labels.map((label) => (
+              <View key={`${label.slug}-${label.name}`} style={styles.labelChip}>
+                <Text style={styles.labelChipText}>{label.name}</Text>
+              </View>
+            ))}
           </View>
           <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.meta} numberOfLines={2}>
-            Short educational bite. Swipe for the next lesson. Progress saves quietly while you watch.
+            Save, share, or keep watching. Progress saves quietly while you scroll.
           </Text>
           <Pressable style={styles.openBtn} onPress={onOpen}>
-            <Text style={styles.openBtnText}>{isVideo ? "Open lesson" : "Open course"}</Text>
+            <Text style={styles.openBtnText}>{isVideo ? "Watch now" : "Open playlist"}</Text>
             <Icon name="continue" size={16} color={colors.accentInk} />
           </Pressable>
         </View>
@@ -108,13 +124,13 @@ export function ShortFeedCard({
         <View style={styles.rail}>
           <IconButton
             icon={bookmarked ? "bookmarkActive" : "bookmark"}
-            label="Save"
+            label={bookmarked ? "Saved" : "Save"}
             tone="light"
             active={bookmarked}
             onPress={onToggleBookmark}
           />
           <IconButton icon="share" label="Share" tone="light" onPress={onShare} />
-          <IconButton icon="learn" label="Learn" tone="light" onPress={onOpen} />
+          <IconButton icon="play" label="Watch" tone="light" onPress={onOpen} />
         </View>
       </View>
     </View>
@@ -162,7 +178,7 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   copy: { flex: 1, gap: space.sm, paddingRight: space.sm },
-  badgeRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  badgeRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.sm },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -173,7 +189,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   badgeText: { color: colors.accentInk, fontSize: 12, fontWeight: "700" },
-  brand: { color: colors.feedMuted, fontSize: 12, fontWeight: "700", letterSpacing: 0.4 },
+  labelChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  labelChipText: { color: colors.feedText, fontSize: 11, fontWeight: "700" },
   title: { color: colors.feedText, fontSize: 22, lineHeight: 28, fontWeight: "700" },
   meta: { color: colors.feedMuted, fontSize: 13, lineHeight: 18 },
   openBtn: {

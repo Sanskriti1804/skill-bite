@@ -9,6 +9,8 @@ type SessionContextValue = {
   profile: Me | null;
   setSession: (value: MobileSession | null) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Mobile UX: explore + create without a role switch. Elevates USER → CREATOR on the server. */
+  ensurePublisher: () => Promise<MobileSession | null>;
   signOut: () => Promise<void>;
 };
 
@@ -39,6 +41,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [session]);
 
+  const ensurePublisher = useCallback(async (): Promise<MobileSession | null> => {
+    if (!session) return null;
+    if (session.role === "CREATOR" || session.role === "ADMIN") return session;
+    await api("/api/v1/me/role", { method: "PATCH", token: session.token, body: { role: "CREATOR" } });
+    const next = { ...session, role: "CREATOR" as const };
+    setSessionState(next);
+    await saveSession(next);
+    try {
+      const me = await api<Me>("/api/v1/me", { token: next.token });
+      setProfile(me);
+    } catch {
+      /* profile refresh is best-effort */
+    }
+    return next;
+  }, [session]);
+
   const signOut = useCallback(async () => {
     try {
       if (session?.token) await api("/api/v1/auth/logout", { method: "POST", token: session.token });
@@ -60,7 +78,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           method: "POST",
           body: { refreshToken: stored.refreshToken },
         });
-        const me = await api<Me>("/api/v1/me", { token: rotated.accessToken });
+        let me = await api<Me>("/api/v1/me", { token: rotated.accessToken });
+        if (me.role === "USER") {
+          await api("/api/v1/me/role", { method: "PATCH", token: rotated.accessToken, body: { role: "CREATOR" } });
+          me = await api<Me>("/api/v1/me", { token: rotated.accessToken });
+        }
         if (cancelled) return;
         const next = {
           token: rotated.accessToken,
@@ -88,8 +110,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ ready, session, profile, setSession, refreshProfile, signOut }),
-    [ready, session, profile, setSession, refreshProfile, signOut],
+    () => ({ ready, session, profile, setSession, refreshProfile, ensurePublisher, signOut }),
+    [ready, session, profile, setSession, refreshProfile, ensurePublisher, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -25,7 +25,7 @@ import { Banner, EmptyState, LoadingState } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "../navigation";
 
 type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, "Browse">,
+  BottomTabScreenProps<MainTabParamList, "Home">,
   NativeStackScreenProps<RootStackParamList>
 >;
 
@@ -132,7 +132,7 @@ export function BrowseScreen({ navigation }: Props) {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + space.sm }]}>
         <View>
-          <Text style={styles.kicker}>Learn in bites</Text>
+          <Text style={styles.kicker}>SkillBite</Text>
           <Text style={styles.brand}>SkillBite</Text>
         </View>
         <Pressable style={styles.searchBtn} onPress={() => setSearchOpen((value) => !value)}>
@@ -140,36 +140,38 @@ export function BrowseScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      {searchOpen ? (
-        <View style={styles.searchPanel}>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search lessons and courses"
-            placeholderTextColor={colors.feedMuted}
-            style={styles.searchInput}
-            autoCapitalize="none"
-          />
-          <FlatList
-            horizontal
-            data={[{ slug: "", name: "All" }, ...categories]}
-            keyExtractor={(item) => item.slug || "all"}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingVertical: 8 }}
-            renderItem={({ item }) => {
-              const selected = category === item.slug;
-              return (
-                <Pressable
-                  onPress={() => setCategory(item.slug)}
-                  style={[styles.chip, selected ? styles.chipOn : null]}
-                >
-                  <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{item.name}</Text>
-                </Pressable>
-              );
-            }}
-          />
-        </View>
-      ) : null}
+      <View style={[styles.categoryWrap, { paddingTop: insets.top + 56 }]}>
+        <FlatList
+          horizontal
+          data={[{ slug: "", name: "All" }, ...categories]}
+          keyExtractor={(item) => item.slug || "all"}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: space.lg, paddingVertical: 8 }}
+          renderItem={({ item }) => {
+            const selected = category === item.slug;
+            return (
+              <Pressable
+                onPress={() => setCategory(item.slug)}
+                style={[styles.chip, selected ? styles.chipOn : null]}
+              >
+                <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{item.name}</Text>
+              </Pressable>
+            );
+          }}
+        />
+        {searchOpen ? (
+          <View style={styles.searchPanelInline}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search shorts and playlists"
+              placeholderTextColor={colors.feedMuted}
+              style={styles.searchInput}
+              autoCapitalize="none"
+            />
+          </View>
+        ) : null}
+      </View>
 
       {toast ? (
         <View style={styles.toast}>
@@ -182,7 +184,7 @@ export function BrowseScreen({ navigation }: Props) {
       {!loading && !items.length ? (
         <View style={styles.emptyWrap}>
           <Icon name="empty" size={40} color={colors.feedMuted} />
-          <EmptyState>{query || category ? "Nothing matched." : "No lessons yet. Publish content from the web creator tools."}</EmptyState>
+          <EmptyState>{query || category ? "Nothing in this category." : "No shorts yet. Upload from Create."}</EmptyState>
         </View>
       ) : null}
 
@@ -240,12 +242,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
   },
-  searchPanel: {
+  categoryWrap: {
     position: "absolute",
     zIndex: 2,
-    left: space.lg,
-    right: space.lg,
-    top: 96,
+    left: 0,
+    right: 0,
+  },
+  searchPanelInline: {
+    marginHorizontal: space.lg,
+    marginBottom: space.sm,
     backgroundColor: "rgba(14,13,12,0.88)",
     borderRadius: radii.md,
     padding: space.md,

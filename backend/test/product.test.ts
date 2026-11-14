@@ -285,6 +285,12 @@ test("migration, constraints, and API", async (t) => {
     const draft = await json(base, "POST", "/api/v1/videos", { title: "Hidden" }, token);
     const browse = await json(base, "GET", "/api/v1/content?q=Hidden");
     assert.equal(browse.body.items.length, 0);
+    const mine = await json(base, "GET", "/api/v1/me/content", undefined, token);
+    assert.equal(mine.status, 200);
+    assert.ok(Array.isArray(mine.body.items));
+    assert.ok(mine.body.items.some((item: { contentId: string; status: string }) => item.contentId === draft.body.contentId && item.status === "DRAFT"));
+    assert.ok(mine.body.items.some((item: { contentId: string }) => item.contentId === contentId));
+    assert.equal((await json(base, "GET", "/api/v1/me/content")).status, 401);
     const bookmark = await json(base, "POST", "/api/v1/bookmarks", { contentId }, token);
     assert.equal(bookmark.status, 201);
     assert.equal((await json(base, "POST", "/api/v1/bookmarks", { contentId }, token)).status, 409);

@@ -1,8 +1,15 @@
+export type ContentLabel = {
+  name: string;
+  slug: string;
+};
+
 export type ContentItem = {
   contentId: string;
   title: string;
   contentType: string;
   publishedAt?: string | null;
+  categories?: ContentLabel[];
+  tags?: ContentLabel[];
 };
 
 export type Lesson = {
@@ -36,6 +43,7 @@ export type ContentDetail = {
 };
 
 export type Category = {
+  categoryId?: string;
   slug: string;
   name: string;
 };

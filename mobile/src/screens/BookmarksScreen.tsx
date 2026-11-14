@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api } from "../api";
 import { Icon } from "../icons";
@@ -9,12 +7,9 @@ import { useSession } from "../session";
 import { colors, radii, space } from "../theme";
 import type { ContentDetail } from "../types";
 import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
-import type { MainTabParamList, RootStackParamList } from "../navigation";
+import type { RootStackParamList } from "../navigation";
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, "Bookmarks">,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, "Bookmarks">;
 
 type Row = { contentId: string; title: string; contentType?: string };
 
@@ -65,7 +60,11 @@ export function BookmarksScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <Title>Saved lessons</Title>
+      <Pressable style={styles.back} onPress={() => navigation.goBack()}>
+        <Icon name="back" size={20} color={colors.ink} />
+        <Text style={styles.backText}>Profile</Text>
+      </Pressable>
+      <Title>Saved</Title>
       <Text style={styles.sub}>Bookmarks for quick return — not a recommendation feed.</Text>
       {!session ? <Banner tone="info">Sign in to see saved lessons.</Banner> : null}
       {error ? <Banner>{error}</Banner> : null}
@@ -100,6 +99,8 @@ export function BookmarksScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  back: { flexDirection: "row", alignItems: "center", gap: 6 },
+  backText: { color: colors.ink, fontWeight: "700" },
   sub: { color: colors.inkMuted, fontSize: 13, marginTop: -8 },
   row: {
     flexDirection: "row",

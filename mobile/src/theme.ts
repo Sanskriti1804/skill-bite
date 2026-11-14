@@ -1,20 +1,28 @@
 export const colors = {
-  bg: "#F3F1EC",
-  surface: "#FFFFFF",
-  ink: "#1C1B19",
-  inkMuted: "#5E5A54",
-  line: "#E4E0D8",
-  accent: "#0F6E56",
-  accentSoft: "#D8EDE6",
-  accentInk: "#FFFFFF",
-  danger: "#9F2D2D",
-  warning: "#8A5A00",
-  videoBg: "#0E0D0C",
-  feedOverlay: "rgba(14,13,12,0.55)",
-  feedText: "#F7F5F1",
-  feedMuted: "rgba(247,245,241,0.78)",
-  tabBar: "#0E0D0C",
-  tabInactive: "#8A857C",
+  bg: "#070B14",
+  bgGlow: "#102033",
+  surface: "#121A2A",
+  surfaceElevated: "#1A2438",
+  ink: "#EAF0FF",
+  inkMuted: "#8FA0BF",
+  line: "#273451",
+  accent: "#2EE6C5",
+  accentAlt: "#5B8CFF",
+  accentSoft: "rgba(46,230,197,0.16)",
+  accentInk: "#042F2A",
+  danger: "#FF6B7A",
+  warning: "#FFC857",
+  success: "#2EE6C5",
+  videoBg: "#05080F",
+  feedOverlay: "rgba(5,8,15,0.55)",
+  feedText: "#F4F7FF",
+  feedMuted: "rgba(234,240,255,0.72)",
+  tabBar: "#070B14",
+  tabInactive: "#6F7F9C",
+  glow: "rgba(46,230,197,0.35)",
+  gradientStart: "#0B1B2E",
+  gradientMid: "#12263F",
+  gradientEnd: "#071018",
 } as const;
 
 export const space = {
@@ -27,8 +35,15 @@ export const space = {
 } as const;
 
 export const radii = {
-  sm: 8,
-  md: 12,
-  lg: 20,
+  sm: 10,
+  md: 16,
+  lg: 24,
+  xl: 32,
   pill: 999,
+} as const;
+
+export const motion = {
+  fast: 180,
+  normal: 320,
+  slow: 520,
 } as const;

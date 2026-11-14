@@ -32,6 +32,13 @@ export function createContentService(access: Access) {
           if (typeof tagId === "string") await prisma.contentTag.create({ data: { contentId: content.contentId, tagId } });
         }
       }
+      if (Array.isArray(body.categoryIds)) {
+        for (const categoryId of body.categoryIds) {
+          if (typeof categoryId === "string") {
+            await prisma.contentCategory.create({ data: { contentId: content.contentId, categoryId } });
+          }
+        }
+      }
       return { contentId: content.contentId, status: "DRAFT" as const };
     },
 
@@ -228,6 +235,33 @@ export function createContentService(access: Access) {
       return { status: "PUBLISHED" as const };
     },
 
+    async myContent(userId: string) {
+      const items = await prisma.content.findMany({
+        where: { creatorId: userId, deletedAt: null },
+        orderBy: { updatedAt: "desc" },
+        take: LIST_LIMIT,
+        select: {
+          contentId: true,
+          contentType: true,
+          title: true,
+          status: true,
+          updatedAt: true,
+          publishedAt: true,
+        },
+      });
+      return {
+        limit: LIST_LIMIT,
+        items: items.map((item) => ({
+          contentId: item.contentId,
+          contentType: item.contentType,
+          title: item.title,
+          status: item.status,
+          updatedAt: item.updatedAt.toISOString(),
+          publishedAt: item.publishedAt?.toISOString() ?? null,
+        })),
+      };
+    },
+
     async categories() {
       const items = await prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
       return { items };
@@ -258,7 +292,11 @@ export function createContentService(access: Access) {
         where,
         take: LIST_LIMIT,
         orderBy: { publishedAt: "desc" },
-        include: { video: true },
+        include: {
+          video: true,
+          categories: { include: { category: true } },
+          tags: { include: { tag: true } },
+        },
       });
       return {
         limit: LIST_LIMIT,
@@ -267,6 +305,14 @@ export function createContentService(access: Access) {
           contentType: item.contentType,
           title: item.title,
           publishedAt: item.publishedAt,
+          categories: item.categories.map((row) => ({
+            name: row.category.name,
+            slug: row.category.slug,
+          })),
+          tags: item.tags.map((row) => ({
+            name: row.tag.name,
+            slug: row.tag.slug,
+          })),
         })),
       };
     },

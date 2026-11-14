@@ -40,6 +40,11 @@ export const icons = {
   studio: "color-wand-outline",
   studioActive: "color-wand",
   add: "add-circle-outline",
+  addActive: "add-circle",
+  create: "add-circle-outline",
+  createActive: "add-circle",
+  explore: "compass-outline",
+  exploreActive: "compass",
 } as const satisfies Record<string, IconName>;
 
 export type AppIcon = keyof typeof icons;
@@ -55,21 +60,17 @@ export function Icon({ name, size = 24, color = colors.ink }: IconProps) {
 }
 
 export function tabIcon(
-  route: "Browse" | "Bookmarks" | "History" | "Notifications" | "Account" | "Studio",
+  route: "Home" | "Explore" | "Create" | "Profile",
   focused: boolean,
 ): IconName {
   switch (route) {
-    case "Browse":
-      return focused ? icons.learnActive : icons.learn;
-    case "Bookmarks":
-      return focused ? icons.bookmarkActive : icons.bookmark;
-    case "History":
-      return focused ? icons.historyActive : icons.history;
-    case "Notifications":
-      return focused ? icons.alertsActive : icons.alerts;
-    case "Account":
+    case "Home":
+      return focused ? icons.homeActive : icons.home;
+    case "Explore":
+      return focused ? icons.exploreActive : icons.explore;
+    case "Create":
+      return focused ? icons.createActive : icons.create;
+    case "Profile":
       return focused ? icons.accountActive : icons.account;
-    case "Studio":
-      return focused ? icons.studioActive : icons.studio;
   }
 }

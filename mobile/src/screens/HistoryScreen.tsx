@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api } from "../api";
 import { Icon } from "../icons";
@@ -9,12 +7,9 @@ import { useSession } from "../session";
 import { colors, radii, space } from "../theme";
 import type { ContentDetail, ProgressItem } from "../types";
 import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
-import type { MainTabParamList, RootStackParamList } from "../navigation";
+import type { RootStackParamList } from "../navigation";
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, "History">,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, "History">;
 
 type Row = {
   videoContentId: string;
@@ -74,7 +69,11 @@ export function HistoryScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <Title>Continue learning</Title>
+      <Pressable style={styles.back} onPress={() => navigation.goBack()}>
+        <Icon name="back" size={20} color={colors.ink} />
+        <Text style={styles.backText}>Profile</Text>
+      </Pressable>
+      <Title>History</Title>
       <Text style={styles.sub}>Resume from your last position. Position is not treated as completion.</Text>
       {!session ? <Banner tone="info">Sign in to continue learning.</Banner> : null}
       {error ? <Banner>{error}</Banner> : null}
@@ -109,6 +108,8 @@ export function HistoryScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  back: { flexDirection: "row", alignItems: "center", gap: 6 },
+  backText: { color: colors.ink, fontWeight: "700" },
   sub: { color: colors.inkMuted, fontSize: 13, marginTop: -8 },
   row: {
     flexDirection: "row",

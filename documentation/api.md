@@ -56,6 +56,7 @@ Google body: `identityToken` only. Unverified email does not link an existing ac
 | Method and path | Auth | Purpose |
 |---|---|---|
 | `GET /api/v1/me` | User, Creator, or Admin | Current account, active role, status. |
+| `GET /api/v1/me/content` | User, Creator, or Admin | Own videos and courses (playlists in the mobile UI), including drafts. Ordered by `updatedAt` desc. Soft-deleted rows omitted. |
 | `PATCH /api/v1/me/role` | User or Creator | Switch the active role between `USER` and `CREATOR`. Does not delete progress or content. Cannot set `ADMIN`. |
 | `GET /api/v1/admin/users` | Admin | List accounts. |
 | `PATCH /api/v1/admin/users/:userId/status` | Admin | Set `ACTIVE`, `SUSPENDED`, or `DEACTIVATED`. |
@@ -66,7 +67,7 @@ There is no endpoint that reconnects progress after a new registration.
 
 | Method and path | Auth | Purpose |
 |---|---|---|
-| `GET /api/v1/content` | No | Published content. Query: `q` (title, description, tags, keywords), `category`, `sort=newest`. |
+| `GET /api/v1/content` | No | Published content. Query: `q` (title, description, tags, keywords), `category`, `sort=newest`. Items include `categories` and `tags` labels for the feed. |
 | `GET /api/v1/tags` | User, Creator, or Admin | List tags used when publishing videos (name, slug, tagId). |
 | `GET /api/v1/categories` | No | Active categories, including Trending as a category. |
 | `GET /api/v1/content/:contentId` | No for published | One published video or course. Drafts are visible to the owner and Admin only. |
@@ -79,7 +80,7 @@ Creator or Admin. A creator may change only owned content. Publish has no approv
 
 | Method and path | Purpose |
 |---|---|
-| `POST /api/v1/videos` | Create a draft video: title, description, sources, tags, keywords. |
+| `POST /api/v1/videos` | Create a draft video: title, description, sources, tags (`tagIds`), optional categories (`categoryIds`), keywords. |
 | `PATCH /api/v1/videos/:contentId` | Edit a draft. Published videos return 409. |
 | `PUT /api/v1/videos/:contentId/media` | Store media. Body `{ mimeType, dataBase64, durationSeconds }`. Uses Cloudinary when `CLOUDINARY_*` is set; otherwise local disk. |
 | `GET /api/v1/videos/:contentId/media` | Read bytes. Published content is readable. A draft is readable by the owner or an admin. |

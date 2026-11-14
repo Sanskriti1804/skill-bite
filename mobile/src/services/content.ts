@@ -1,9 +1,21 @@
 import { api } from "../api";
+import type { Category } from "../types";
 
 export type Tag = { tagId: string; name: string; slug: string };
 
+export type OwnedContent = {
+  contentId: string;
+  contentType: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+  publishedAt: string | null;
+};
+
 export const contentApi = {
   tags: (token: string) => api<{ items: Tag[] }>("/api/v1/tags", { token }),
+  categories: () => api<{ items: Category[] }>("/api/v1/categories"),
+  mine: (token: string) => api<{ items: OwnedContent[]; limit: number }>("/api/v1/me/content", { token }),
   detail: (contentId: string, token?: string) => api<Record<string, unknown>>(`/api/v1/content/${contentId}`, { token }),
   createVideo: (token: string, body: Record<string, unknown>) =>
     api<{ contentId: string; status: string }>("/api/v1/videos", { method: "POST", token, body }),
