@@ -56,6 +56,7 @@ Google body: `identityToken` only. Unverified email does not link an existing ac
 | Method and path | Auth | Purpose |
 |---|---|---|
 | `GET /api/v1/me` | User, Creator, or Admin | Current account, active role, status. |
+| `GET /api/v1/me/content` | User, Creator, or Admin | Own videos and courses (playlists in the mobile UI), including drafts. Ordered by `updatedAt` desc. Soft-deleted rows omitted. |
 | `PATCH /api/v1/me/role` | User or Creator | Switch the active role between `USER` and `CREATOR`. Does not delete progress or content. Cannot set `ADMIN`. |
 | `GET /api/v1/admin/users` | Admin | List accounts. |
 | `PATCH /api/v1/admin/users/:userId/status` | Admin | Set `ACTIVE`, `SUSPENDED`, or `DEACTIVATED`. |
@@ -66,7 +67,8 @@ There is no endpoint that reconnects progress after a new registration.
 
 | Method and path | Auth | Purpose |
 |---|---|---|
-| `GET /api/v1/content` | No | Published content. Query: `q` (title, description, tags, keywords), `category`, `sort=newest`. |
+| `GET /api/v1/content` | No | Published content. Query: `q` (title, description, tags, keywords), `category`, `sort=newest`. Items include `categories` and `tags` labels for the feed. |
+| `GET /api/v1/tags` | User, Creator, or Admin | List tags used when publishing videos (name, slug, tagId). |
 | `GET /api/v1/categories` | No | Active categories, including Trending as a category. |
 | `GET /api/v1/content/:contentId` | No for published | One published video or course. Drafts are visible to the owner and Admin only. |
 
@@ -78,9 +80,9 @@ Creator or Admin. A creator may change only owned content. Publish has no approv
 
 | Method and path | Purpose |
 |---|---|
-| `POST /api/v1/videos` | Create a draft video: title, description, sources, tags, keywords. |
+| `POST /api/v1/videos` | Create a draft video: title, description, sources, tags (`tagIds`), optional categories (`categoryIds`), keywords. |
 | `PATCH /api/v1/videos/:contentId` | Edit a draft. Published videos return 409. |
-| `PUT /api/v1/videos/:contentId/media` | Store media. Body `{ mimeType, dataBase64, durationSeconds }`. Development storage is local. |
+| `PUT /api/v1/videos/:contentId/media` | Store media. Body `{ mimeType, dataBase64, durationSeconds }`. Uses Cloudinary when `CLOUDINARY_*` is set; otherwise local disk. |
 | `GET /api/v1/videos/:contentId/media` | Read bytes. Published content is readable. A draft is readable by the owner or an admin. |
 | `POST /api/v1/videos/:contentId/publish` | Publish when title, description, creator, media, and required metadata exist. |
 | `POST /api/v1/videos/:contentId/takedown` | Owner unpublishes so a revision can be edited and published again. |
@@ -169,7 +171,7 @@ Filtering that is already decided:
 |---|---|---|
 | Google sign-in | `POST /api/v1/auth/google` sends `identityToken`. The server checks signature, issuer, audience, expiry, and verified email with Google. A typed email is not accepted as proof. | Invalid token is 401. Google being unreachable is 500 with a generic message. Do not create an account on an unchecked token. |
 | Email delivery | Verification and password recovery must be delivered. The provider is not chosen. | The API still stores the hashed single-use token. The response must not reveal whether the mailbox exists. |
-| Media storage | `PUT /api/v1/videos/:contentId/media` stores a reference, not the bytes in PostgreSQL. Local disk in development. Object storage and a CDN in production. The provider is not chosen. | A missing or unreadable object is not a successful playback. The content URL stays restricted. |
+| Media storage | `PUT /api/v1/videos/:contentId/media` stores a reference, not the bytes in PostgreSQL. Cloudinary is the first production media host (`media_reference` like `cloudinary:<public_id>`). Local disk remains the fallback when Cloudinary env vars are unset (tests and early local work). | A missing or unreadable object is not a successful playback. Playback still goes through `GET /api/v1/videos/:contentId/media` so access stays restricted. |
 | Push | `POST /api/v1/devices` stores an encrypted device token. Firebase Cloud Messaging is an example, not a required provider. | Delivery failure does not block playback, progress, or bookmarks. |
 
 No payment provider.
@@ -208,11 +210,15 @@ Also loaded by `backend/src/config.ts`. Values stay in the server environment:
 | `ARGON2_TIME_COST` | No | Default 2. |
 | `ARGON2_PARALLELISM` | No | Default 1. |
 | `GOOGLE_CLIENT_ID` | For live Google sign-in | Audience of the identity token. Empty means Google sign-in returns 401. |
-| `MEDIA_ROOT` | No | Default `./var/media`. |
+| `MEDIA_ROOT` | No | Default `./var/media`. Used when Cloudinary is not configured. |
+| `CLOUDINARY_CLOUD_NAME` | For Cloudinary media | Cloud name from the Cloudinary dashboard. |
+| `CLOUDINARY_API_KEY` | For Cloudinary media | API key. Empty with the other Cloudinary vars empty means local media. |
+| `CLOUDINARY_API_SECRET` | For Cloudinary media | API secret. Never return this to clients. |
+| `CLOUDINARY_FOLDER` | No | Folder prefix for uploads. Default `skillbite`. |
 | `PUSH_TOKEN_KEY` | For device registration | At least 16 characters. Encrypts stored device tokens. |
 | `CORS_ORIGINS` | No | Comma-separated browser origins allowed to call the API. Empty allows no browser origin. |
 
-Email delivery credentials and production object-storage credentials are not loaded. Those providers are not chosen. The Google identity-token check does not use a client secret.
+Email delivery credentials are not loaded; that provider is not chosen. Cloudinary credentials are optional and stay in the server environment. The Google identity-token check does not use a client secret.
 
 ## Privacy and failure handling
 

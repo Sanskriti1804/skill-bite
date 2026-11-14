@@ -1,72 +1,64 @@
 # Security
 
-Requirements from BRD sections 9.1 and 9.2, applied to the logical ERD. This is not a penetration-test report. No running system was reviewed.
+Requirements from BRD sections 9.1 and 9.2, applied to the logical ERD and the current API. This is not a penetration-test report.
 
 ## Trust boundary
 
-The browser and mobile apps are untrusted. Role, account status, and resource ownership are read from the server-side account record.
+The browser and mobile apps are untrusted. Role, account status, and resource ownership are read from the server-side account record. Client route guards are presentation only.
 
 ## Secrets
 
 | Data | Storage rule |
 |---|---|
-| Password | `USER.password_hash` only. Never plaintext. Never in logs or audit `details`. |
+| Password | `USER.password_hash` only (Argon2id). Never plaintext. Never in logs or audit `details`. |
 | Verification and reset token | `AUTH_TOKEN.token_hash` only. |
 | Refresh token | `REFRESH_TOKEN.token_hash` only. |
-| Access token | Not a table. Validate signature, issuer, audience, and expiry. Server-side revocation of access tokens is not in the ERD. |
-| Push token | `encrypted_push_token` if the app must send it again. Hashing alone cannot deliver a push. |
+| Access token | Short-lived JWT. Validate signature, issuer, audience, and expiry. |
+| Push token | `encrypted_push_token` with AES-GCM when registered. Hash fingerprint stored for lookup. |
+
+`backend/.env` is gitignored. `backend/.env.example` lists names only. Do not commit real `TOKEN_SIGNING_SECRET`, `PUSH_TOKEN_KEY`, Google secrets, or database passwords.
 
 ## Token and session lifecycle
 
-As written in `SkillBite-ERD.md`:
-
 - Check purpose, expiry, unused, and unrevoked before `AUTH_TOKEN` is consumed.
 - Consume the token in the same transaction as the authorized change.
-- Refresh rotation marks the presented token used and inserts the replacement, linked by `replaced_by_token_id`, in one transaction.
-- A second use of a consumed refresh token is replay. Whether that revokes the session or the token family is not specified.
+- Refresh rotation marks the presented token used and inserts the replacement in one transaction.
+- Refresh reuse revokes the session.
 - Logout sets `USER_SESSION.revoked_at` and revokes active refresh tokens for that session.
 - A session with `revoked_at` set, or `expires_at` in the past, does not authorize.
-- Account status is checked as well. Only `ACTIVE` may sign in or call a protected API. `SUSPENDED` and `DEACTIVATED` may not.
+- Account status is checked. Only `ACTIVE` may sign in or call a protected API.
 
 ## Authorization
 
 | Action | Rule |
 |---|---|
-| Learner playback, bookmark, progress | Authenticated account whose status allows it. Creator access is OD-02. |
+| Learner playback, bookmark, progress | Authenticated account whose status allows it. |
 | Create or edit content | Creator or administrator, and ownership for non-admin edits (FR-CONT-09). |
-| Category, tag, user status, settings | Administrator (FR-ADMIN-04, FR-ADMIN-06). Whether one admin can manage another admin is open (OD-13). |
+| Category, tag, user status, settings | Administrator (FR-ADMIN-04, FR-ADMIN-06). |
 | Audit read | Administrators. No general user write. |
 
-Do not log passwords, raw tokens, push tokens, or full learning-history dumps. Audit `details` follow the same rule.
-
-## Still required before implementation
-
-- Password hashing algorithm and parameters.
-- Access-token format and lifetime.
-- Refresh-reuse response.
-- Account-status values are `ACTIVE`, `SUSPENDED`, and `DEACTIVATED`.
-- Google client secrets and database credentials kept out of the repository.
+Do not log passwords, raw tokens, push tokens, or full learning-history dumps. Request logs omit bodies that contain credentials. Audit `details` follow the same rule.
 
 ## Checklist
 
-Every row is **not done**.
-
 | Check | Verify by | Status |
 |---|---|---|
-| Passwords stored only as hashes | Schema and registration code | Not done |
-| Verification and reset tokens stored only as hashes, expired, and single-use | Auth tests | Not done |
-| Refresh tokens rotated and revocable | Auth tests | Not done |
-| Google identity unique on provider plus provider user id | Constraint test | Not done |
-| Account has exactly one stored role | Schema and authorization tests | Not done |
-| Deactivated or pending accounts cannot use protected actions | Authorization tests | Not done. Status values are undefined |
-| Creator cannot modify another creator’s content | Authorization tests | Not done |
-| Only administrators manage users, categories, tags, settings, and moderation | Authorization tests | Not done |
-| Audit details contain no passwords or raw tokens | Review of audit writes | Not done |
-| Push tokens encrypted if stored for delivery | Device registration review | Not done |
-| Secrets kept out of the repository | Review of commits and ignore rules | No app secrets exist yet |
-| Personal and learning data restricted by role and ownership | Authorization tests | Not done |
-| Account deletion and retention | Policy tests | Blocked by open BRD deletion decisions |
+| Passwords stored only as hashes | Schema and registration code | Done |
+| Verification and reset tokens stored only as hashes, expired, and single-use | Auth tests | Done |
+| Refresh tokens rotated and revocable | Auth tests / Postman | Done |
+| Google identity unique on provider plus provider user id | Constraint and google path tests | Done |
+| Account has exactly one stored role | Schema and authorization tests | Done |
+| Suspended or deactivated accounts cannot use protected actions | Authorization tests | Done |
+| Creator cannot modify another creator’s content | Authorization tests | Done |
+| Only administrators manage users, categories, tags, settings, and moderation | Authorization tests / Postman | Done |
+| Audit details contain no passwords or raw tokens | Review of audit writes | Done for current writers |
+| Push tokens encrypted if stored for delivery | Device registration review | Done (delivery provider still open) |
+| Secrets kept out of the repository | `.gitignore` and review | Done for current tree |
+| Personal and learning data restricted by role and ownership | Authorization tests | Done for implemented routes |
+| Account deletion and retention | Policy tests | Blocked by OD-11, OD-12 |
 | Age and consent | Policy | Open (OD-10) |
-| Dependency review | After dependencies exist | Not done |
+| Dependency review | After a release host exists | Not done |
+| Rate limiting | Numeric limits approved | Not done |
+| Production email and push providers | Provider choice | Not done |
 
 Do not mark a row done without a recorded test or review.

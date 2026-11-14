@@ -1,6 +1,6 @@
 # Architecture
 
-**State:** proposed. Nothing in this file is implemented.
+**State:** implemented against ADR 0002. Cloudinary is the first media host when configured. Hosting and push/email providers remain unchosen.
 
 ## Boundaries
 
@@ -16,12 +16,12 @@ Clients are not trusted for role, account status, ownership, or completion. Auth
 clients (four surfaces)
     -> application API (authorization, validation, workflows)
         -> relational database (SkillBite-ERD.md)
-        -> video storage and playback (provider not chosen)
+        -> video storage and playback (Cloudinary when configured; else local)
         -> Google sign-in (required by FR-AUTH-04)
         -> push delivery (provider not chosen)
 ```
 
-One backend is the recommended default so role checks and progress rules exist once. A different split needs an approved reason (OD-16). The stack is not accepted: `decisions/0001-technology-stack.md`.
+One backend owns role checks and progress rules. ADR 0002 is the accepted stack baseline. ADR 0001 remains the earlier unaccepted note. Hosting is still open (OD-16).
 
 | Area | Owns | Does not own |
 |---|---|---|
@@ -33,7 +33,7 @@ One backend is the recommended default so role checks and progress rules exist o
 
 Background workers, a cache, and a search engine are not a confirmed design. Full-text search for FR-DISC-02 is open (OD-07, OD-16).
 
-Environments must be separated before deployment. Database credentials, the Google client secret, push credentials, and token hashing parameters stay outside source control. No environment files exist because no runtime exists.
+Environments must be separated before deployment. Database credentials, the Google client secret, push credentials, and token hashing parameters stay outside source control. `backend/.env` is local and gitignored; `backend/.env.example` lists names only.
 
 ## Data flows
 

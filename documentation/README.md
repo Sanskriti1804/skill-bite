@@ -8,12 +8,12 @@ Design notes. They do not replace the BRD or the ERD at the repository root.
 | [../SkillBite-ERD.md](../SkillBite-ERD.md) | Entities, keys, relationships, token lifecycle |
 | [requirements.md](requirements.md) | Requirement IDs mapped to entities and planned checks |
 | [architecture.md](architecture.md) | Proposed system shape and data flows |
-| [database.md](database.md) | How to read the ERD; what is not migrated yet |
-| [api.md](api.md) | API rules that are known; contracts that are not |
-| [security.md](security.md) | Secrets, sessions, authorization, incomplete checklist |
+| [database.md](database.md) | Physical PostgreSQL model; Prisma schema lives under `backend/prisma/` |
+| [api.md](api.md) | HTTP contract for implemented `/api/v1` routes |
+| [security.md](security.md) | Secrets, sessions, authorization, checklist |
 | [decisions/0002-confirmed-answers.md](decisions/0002-confirmed-answers.md) | Accepted answers to the open questions |
 | [decisions/README.md](decisions/README.md) | How to add the next ADR |
-| [testing.md](testing.md) | Planned layers and scenarios; none executed |
+| [testing.md](testing.md) | Test layers, runners, and scenario evidence |
 | [engineering.md](engineering.md) | Build order, gates, and deferred operations |
 | [validation.md](validation.md) | BRD–ERD gaps that were not closed |
 
@@ -22,4 +22,4 @@ Design notes. They do not replace the BRD or the ERD at the repository root.
 - A business rule goes in `SkillBite.md`, then a row in `requirements.md`.
 - A data-model change goes in `SkillBite-ERD.md`.
 - An accepted technical choice becomes a new file in `decisions/`.
-- Application code, tests, migrations, and CI wait until ADR 0001 is accepted or the user names the stack.
+- Application code follows ADR 0002. Hosting, CI, and production providers wait until those decisions exist.

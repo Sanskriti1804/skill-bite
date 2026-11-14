@@ -21,7 +21,12 @@ export default function LoginPage() {
     try {
       const result = await auth.login(email, password);
       const me = await auth.me(result.accessToken);
-      session.setSession({ token: result.accessToken, refreshToken: result.refreshToken, role: me.role });
+      session.setSession({
+        token: result.accessToken,
+        refreshToken: result.refreshToken,
+        role: me.role,
+        userId: me.userId,
+      });
       router.push(me.role === "ADMIN" ? "/admin" : me.role === "CREATOR" ? "/creator" : "/");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Sign in failed");
@@ -37,9 +42,11 @@ export default function LoginPage() {
       <Field label="Password" type="password" value={password} onChange={setPassword} />
       {error ? <ErrorState>{error}</ErrorState> : null}
       <Button primary type="submit" disabled={busy}>Sign in</Button>
-      <Button type="button" onClick={() => setError("Google sign-in is checked on the server. This screen does not send the typed email as proof.")}>Continue with Google</Button>
+      <Button type="button" disabled onClick={() => undefined}>Continue with Google</Button>
+      <p className="muted">Google sign-in is deferred until a client OAuth client id is configured. The API already verifies Google identity tokens.</p>
       <Link href="/register">Register</Link>
       <Link href="/recover">Forgot password</Link>
+      <Link href="/verify">Verify email</Link>
     </form>
   );
 }

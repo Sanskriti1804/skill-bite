@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "SkillBite",
+    "slug": "skillbite",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "splash": {
+      "backgroundColor": "#070B14",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.skillbite.app"
+    },
+    "android": {
+      "package": "com.skillbite.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#070B14"
+      }
+    },
+    "scheme": "skillbite",
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

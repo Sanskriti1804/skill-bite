@@ -55,7 +55,7 @@ If the web app and the API both want port 3000, set `NEXT_PUBLIC_API_URL` to the
 
 ## Docker
 
-`docker-compose.yml` starts PostgreSQL, the API, and the Next.js app. The Expo app stays on the host. Database files stay in the `pgdata` volume. Local media stays in the `media` volume. The compose file uses the same local placeholder values as `backend/.env.example`. Replace `TOKEN_SIGNING_SECRET` and `PUSH_TOKEN_KEY` before any shared environment. Do not commit a real secret.
+`docker-compose.yml` starts PostgreSQL, the API, and the Next.js app. The Expo app in `mobile/` stays on the host. Database files stay in the `pgdata` volume. Local media stays in the `media` volume. The compose file uses the same local placeholder values as `backend/.env.example`. Replace `TOKEN_SIGNING_SECRET` and `PUSH_TOKEN_KEY` before any shared environment. Do not commit a real secret.
 
 From the repository root, with Docker running:
 
@@ -70,8 +70,8 @@ Stop the stack with `docker compose down`. That keeps the database volume. `dock
 
 If port 5432 or 3000 is already in use, stop the other Postgres or API process first. If the API is unhealthy, run `docker compose logs backend`. A failed migration is printed there. Rebuild after a dependency change with `docker compose build`.
 
-`npm test` and `npm run typecheck` run in `backend/` and `frontend/`. `frontend/mobile` has `npm start` and `npm run typecheck`. There is no lint or format script. ADR 0002 does not name a linter.
+`npm test` and `npm run typecheck` run in `backend/` and `frontend/`. `mobile/` has `npm start` and `npm run typecheck`. There is no lint or format script. ADR 0002 does not name a linter.
 
 ## Limitations
 
-Open BRD decisions block completion measurement, deletion and retention, notification triggers, analytics metrics, age and consent, and the authentication architecture. This repository is not a running product and is not production-ready.
+Open BRD decisions still block completion measurement, deletion and retention, notification triggers, analytics metrics, age and consent capture, and hosting. Auth architecture follows ADR 0002. This repository is not production-ready.

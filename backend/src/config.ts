@@ -15,6 +15,10 @@ const schema = z.object({
   ARGON2_PARALLELISM: z.coerce.number().int().positive().default(1),
   GOOGLE_CLIENT_ID: z.string().optional(),
   MEDIA_ROOT: z.string().default("./var/media"),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().optional(),
   PUSH_TOKEN_KEY: z.string().min(16).optional(),
   CORS_ORIGINS: z.string().default(""),
 });

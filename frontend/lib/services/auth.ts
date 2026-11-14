@@ -3,7 +3,7 @@ import { api, type Session } from "../api";
 export type Me = { userId: string; email: string; displayName: string; role: string; accountStatus: string };
 
 export const auth = {
-  register: (email: string, password: string) => api<{ userId: string }>("/api/v1/auth/register", { method: "POST", body: { email, password } }),
+  register: (email: string, password: string, displayName?: string, role?: string) => api<{ userId: string }>("/api/v1/auth/register", { method: "POST", body: { email, password, displayName, role } }),
   verify: (token: string) => api<{ verified: boolean }>("/api/v1/auth/verify-email", { method: "POST", body: { token } }),
   login: (email: string, password: string) => api<Session>("/api/v1/auth/login", { method: "POST", body: { email, password } }),
   startReset: (email: string) => api<{ status: string }>("/api/v1/auth/password-reset", { method: "POST", body: { email } }),

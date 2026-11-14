@@ -63,6 +63,10 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
     const session = await requireAuth(req);
     res.status(200).json(await admin.me(session.userId));
   }));
+  router.get("/me/content", asyncHandler(async (req, res) => {
+    const session = await requireAuth(req);
+    res.status(200).json(await content.myContent(session.userId));
+  }));
   router.patch("/me/role", asyncHandler(async (req, res) => {
     const session = await requireAuth(req);
     requireRole(session, ["USER", "CREATOR"]);
@@ -142,6 +146,10 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
 
   router.get("/categories", asyncHandler(async (_req, res) => {
     res.status(200).json(await content.categories());
+  }));
+  router.get("/tags", asyncHandler(async (req, res) => {
+    await requireAuth(req);
+    res.status(200).json(await content.tags());
   }));
   router.get("/content", asyncHandler(async (req, res) => {
     res.status(200).json(await content.search(req.query));

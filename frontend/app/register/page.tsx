@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, ErrorState, Field } from "../../components/ui";
-import { api } from "../../lib/api";
+import { auth } from "../../lib/services/auth";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -22,7 +22,7 @@ export default function RegisterPage() {
     }
     setBusy(true);
     try {
-      await api("/api/v1/auth/register", { method: "POST", body: { email, password, displayName, role } });
+      await auth.register(email, password, displayName, role);
       setMessage("Account created. Use the verification token from your mail, then sign in.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Registration failed");
