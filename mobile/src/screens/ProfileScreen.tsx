@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -20,8 +19,14 @@ import { Icon } from "../icons";
 import { contentApi, type OwnedContent } from "../services/content";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
-import { Banner, EmptyState, LoadingState } from "../ui";
+import { ActionSheet, type ActionSheetAction, Banner, EmptyState, LoadingState } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "../navigation";
+
+type SheetState = {
+  title: string;
+  message?: string;
+  actions: ActionSheetAction[];
+} | null;
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, "Profile">,
@@ -93,6 +98,7 @@ export function ProfileScreen({ navigation }: Props) {
   const [savingUsername, setSavingUsername] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [sheet, setSheet] = useState<SheetState>(null);
 
   useEffect(() => {
     setUsernameDraft(profile?.username ?? "");
@@ -162,39 +168,41 @@ export function ProfileScreen({ navigation }: Props) {
   }
 
   function confirmDelete(item: OwnedContent) {
-    Alert.alert(
-      item.contentType === "COURSE" ? "Delete course?" : "Delete short?",
-      item.contentType === "COURSE"
+    const isCourse = item.contentType === "COURSE";
+    setSheet({
+      title: isCourse ? "Delete course?" : "Delete short?",
+      message: isCourse
         ? "This permanently deletes the course. Shorts stay in your library."
         : `"${item.description || item.title || "Untitled short"}" will be deleted.`,
-      [
-        { text: "Cancel", style: "cancel" },
+      actions: [
         {
-          text: "Delete",
-          style: "destructive",
+          label: "Delete",
+          tone: "danger",
           onPress: () => void removeItem(item),
         },
       ],
-    );
+    });
   }
 
   function openItemMenu(item: OwnedContent) {
     const isCourse = item.contentType === "COURSE";
-    Alert.alert(isCourse ? item.title || "Course" : "Short", undefined, [
-      {
-        text: "Edit",
-        onPress: () =>
-          navigation.navigate(isCourse ? "CourseStudio" : "ShortEditor", {
-            contentId: item.contentId,
-          }),
-      },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => confirmDelete(item),
-      },
-      { text: "Cancel", style: "cancel" },
-    ]);
+    setSheet({
+      title: isCourse ? item.title || "Course" : "Short",
+      actions: [
+        {
+          label: "Edit",
+          onPress: () =>
+            navigation.navigate(isCourse ? "CourseStudio" : "ShortEditor", {
+              contentId: item.contentId,
+            }),
+        },
+        {
+          label: "Delete",
+          tone: "danger",
+          onPress: () => confirmDelete(item),
+        },
+      ],
+    });
   }
 
   async function saveUsername() {
@@ -228,33 +236,35 @@ export function ProfileScreen({ navigation }: Props) {
   }
 
   function openMenu() {
-    Alert.alert("Account", undefined, [
-      {
-        text: "Edit profile",
-        onPress: () => {
-          setUsernameDraft(profile?.username ?? "");
-          setEditOpen(true);
+    setSheet({
+      title: "Account",
+      actions: [
+        {
+          label: "Edit profile",
+          onPress: () => {
+            setUsernameDraft(profile?.username ?? "");
+            setEditOpen(true);
+          },
         },
-      },
-      {
-        text: "Watching list",
-        onPress: () => navigation.navigate("Bookmarks"),
-      },
-      {
-        text: "History",
-        onPress: () => navigation.navigate("History"),
-      },
-      {
-        text: "Notifications",
-        onPress: () => navigation.navigate("Notifications"),
-      },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: () => void signOut(),
-      },
-      { text: "Cancel", style: "cancel" },
-    ]);
+        {
+          label: "Watching list",
+          onPress: () => navigation.navigate("Bookmarks"),
+        },
+        {
+          label: "History",
+          onPress: () => navigation.navigate("History"),
+        },
+        {
+          label: "Notifications",
+          onPress: () => navigation.navigate("Notifications"),
+        },
+        {
+          label: "Sign out",
+          tone: "danger",
+          onPress: () => void signOut(),
+        },
+      ],
+    });
   }
 
   if (!session) {
@@ -281,7 +291,7 @@ export function ProfileScreen({ navigation }: Props) {
             style={styles.iconBtn}
             onPress={() => navigation.navigate("ShortEditor", {})}
           >
-            <Icon name="create" size={26} color={colors.ink} />
+            <Icon name="create" size={24} color={colors.ink} />
           </Pressable>
           <Pressable hitSlop={10} style={styles.iconBtn} onPress={openMenu}>
             <Icon name="menu" size={26} color={colors.ink} />
@@ -446,10 +456,10 @@ export function ProfileScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={() => setEditOpen(false)}>
+      <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
         <View style={styles.modalRoot}>
           <Pressable style={styles.modalBackdrop} onPress={() => setEditOpen(false)} />
-          <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+          <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Edit profile</Text>
             <Text style={styles.modalHint}>Change your unique username used to sign in.</Text>
@@ -475,6 +485,14 @@ export function ProfileScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+
+      <ActionSheet
+        visible={Boolean(sheet)}
+        title={sheet?.title ?? ""}
+        message={sheet?.message}
+        actions={sheet?.actions ?? []}
+        onClose={() => setSheet(null)}
+      />
     </View>
   );
 }
@@ -486,7 +504,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
+    paddingVertical: space.md,
     minHeight: 48,
   },
   topUsername: {
@@ -496,20 +514,20 @@ const styles = StyleSheet.create({
     fontFamily: font.heavy,
     fontWeight: "800",
   },
-  topActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  topActions: { flexDirection: "row", alignItems: "center", gap: space.xs },
   iconBtn: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
-  scroll: { paddingBottom: 32 },
+  scroll: { paddingBottom: 24 },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: space.lg,
-    gap: space.lg,
-    marginTop: space.sm,
+    gap: space.md,
+    marginTop: space.md,
   },
   avatarRing: {
     width: 92,
@@ -573,7 +591,7 @@ const styles = StyleSheet.create({
   },
   editRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: space.sm,
     paddingHorizontal: space.lg,
     marginTop: space.md,
   },
@@ -597,9 +615,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
     paddingBottom: space.sm,
-    gap: 14,
+    gap: space.md,
   },
-  highlight: { width: 72, alignItems: "center", gap: 6 },
+  highlight: { width: 72, alignItems: "center", gap: space.sm },
   highlightCircle: {
     width: 64,
     height: 64,
@@ -647,7 +665,7 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE,
     height: Math.round(TILE * (4 / 3)),
-    backgroundColor: "#1a1a1a",
+    backgroundColor: colors.videoBg,
     overflow: "hidden",
   },
   tileImage: {
@@ -670,7 +688,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   tileBadgeText: {
-    color: "#fff",
+    color: colors.feedText,
     fontSize: 10,
     fontFamily: font.bold,
     fontWeight: "700",
@@ -683,30 +701,30 @@ const styles = StyleSheet.create({
   modalRoot: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(40, 16, 28, 0.45)",
+    backgroundColor: "rgba(21, 34, 56, 0.45)",
   },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject },
+  modalBackdrop: { ...StyleSheet.absoluteFill },
   modalSheet: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     paddingHorizontal: space.lg,
     paddingTop: space.sm,
     gap: space.md,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
   },
   modalHandle: {
     alignSelf: "center",
-    width: 42,
+    width: 40,
     height: 4,
     borderRadius: 999,
-    backgroundColor: colors.accentAlt,
+    backgroundColor: "rgba(27,42,74,0.18)",
     marginBottom: 4,
   },
   modalTitle: {
     color: colors.ink,
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: font.display,
   },
   modalHint: {

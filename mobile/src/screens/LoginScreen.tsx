@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api } from "../api";
 import { AuthShell } from "../components/AuthShell";
 import { Icon } from "../icons";
+import { loadInterestIds, saveInterestIds } from "../interestsStore";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
 import type { Me } from "../types";
@@ -33,6 +34,8 @@ export function LoginScreen({ navigation }: Props) {
         await api("/api/v1/me/role", { method: "PATCH", token: result.accessToken, body: { role: "CREATOR" } });
         me = { ...me, role: "CREATOR" };
       }
+      const pending = await loadInterestIds(me.username);
+      if (pending?.length) await saveInterestIds(me.userId, pending);
       await setSession({
         token: result.accessToken,
         refreshToken: result.refreshToken,
@@ -48,15 +51,12 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <AuthShell
-      plain
-      eyebrow="Welcome back"
-      title="Sign in to continue"
-      subtitle="Pick up your shorts, courses, and progress in one place."
+      title="Welcome back"
+      subtitle="Sign in to pick up your shorts, courses, and progress."
       footer={(
-        <Pressable style={styles.switchPill} onPress={() => navigation.navigate("Register")}>
+        <Pressable style={styles.switchRow} onPress={() => navigation.navigate("Register")}>
           <Text style={styles.switchText}>New here?</Text>
           <Text style={styles.switchAccent}>Create an account</Text>
-          <Icon name="continue" size={16} color={colors.accent} />
         </Pressable>
       )}
     >
@@ -86,31 +86,14 @@ export function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  fieldBlock: {
-    flexDirection: "row",
-    gap: space.md,
-    alignItems: "flex-start",
-  },
-  fieldIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    marginTop: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.accentSoft,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  fieldBody: { flex: 1 },
   cta: {
     borderRadius: radii.pill,
     overflow: "hidden",
-    marginTop: space.sm,
+    marginTop: space.xs,
   },
   ctaDisabled: { opacity: 0.65 },
   ctaFill: {
-    minHeight: 56,
+    minHeight: 54,
     paddingHorizontal: space.xl,
     flexDirection: "row",
     alignItems: "center",
@@ -120,18 +103,14 @@ const styles = StyleSheet.create({
   ctaText: {
     color: colors.accentInk,
     fontSize: 16,
-    fontFamily: font.heavy, fontWeight: "800",
+    fontFamily: font.heavy,
+    fontWeight: "800",
   },
-  switchPill: {
+  switchRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    borderRadius: radii.pill,
-    backgroundColor: colors.bg,
-    borderWidth: 1,
-    borderColor: colors.line,
+    gap: 6,
+    paddingVertical: space.sm,
   },
   switchText: { color: colors.inkMuted, fontFamily: font.medium, fontWeight: "600", fontSize: 14 },
   switchAccent: { color: colors.accent, fontFamily: font.heavy, fontWeight: "800", fontSize: 14 },

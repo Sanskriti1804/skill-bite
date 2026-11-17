@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppLogo } from "../components/AppLogo";
-import { colors, font, space } from "../theme";
+import { colors, font } from "../theme";
 
 type Props = {
   onFinished?: () => void;
@@ -43,21 +43,30 @@ export function SplashScreen({ onFinished }: Props) {
       />
       <View style={styles.orbA} />
       <View style={styles.orbB} />
-      <Animated.View style={[styles.markWrap, { transform: [{ scale }], opacity: logo }]}>
-        <AppLogo size={168} />
-      </Animated.View>
-      <Animated.Text
-        style={[
-          styles.brand,
-          {
-            opacity: logo,
-            transform: [{ translateY: logo.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-          },
-        ]}
-      >
-        SkillBite
-      </Animated.Text>
-      <Text style={styles.tag}>Learn in motion</Text>
+
+      <View style={styles.top}>
+        <Animated.Text
+          style={[
+            styles.brand,
+            {
+              opacity: logo,
+              transform: [{ translateY: logo.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+            },
+          ]}
+        >
+          SkillBite
+        </Animated.Text>
+      </View>
+
+      <View style={styles.center}>
+        <Animated.View style={[styles.markWrap, { transform: [{ scale }], opacity: logo }]}>
+          <AppLogo size={112} />
+        </Animated.View>
+      </View>
+
+      <View style={styles.bottom}>
+        <Text style={styles.tag}>Learn in motion</Text>
+      </View>
     </View>
   );
 }
@@ -65,8 +74,6 @@ export function SplashScreen({ onFinished }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: colors.bg,
   },
   orbA: {
@@ -74,7 +81,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: "rgba(242,131,175,0.45)",
+    backgroundColor: "rgba(59,130,196,0.18)",
     top: "18%",
     left: -40,
   },
@@ -83,21 +90,41 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: "rgba(243,204,151,0.85)",
+    backgroundColor: "rgba(27,42,74,0.08)",
     bottom: "16%",
     right: -30,
   },
-  markWrap: { alignItems: "center", justifyContent: "center", marginBottom: space.md },
+  top: {
+    height: "20%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 8,
+  },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottom: {
+    height: "20%",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 8,
+    paddingBottom: "5%",
+  },
+  markWrap: { alignItems: "center", justifyContent: "center" },
   brand: {
     color: colors.ink,
     fontSize: 36,
     fontFamily: font.display,
     letterSpacing: -0.5,
+    textAlign: "center",
   },
   tag: {
-    marginTop: space.sm,
     color: colors.inkMuted,
     fontSize: 14,
-    fontFamily: font.medium, fontWeight: "600",
+    fontFamily: font.medium,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

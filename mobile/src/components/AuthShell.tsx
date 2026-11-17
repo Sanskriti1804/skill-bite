@@ -11,18 +11,16 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppLogo } from "./AppLogo";
-import { colors, font, radii, space } from "../theme";
+import { colors, font, space } from "../theme";
 
 type Props = {
-  eyebrow: string;
   title: string;
   subtitle: string;
   children: ReactNode;
   footer: ReactNode;
-  plain?: boolean;
 };
 
-export function AuthShell({ eyebrow, title, subtitle, children, footer, plain = false }: Props) {
+export function AuthShell({ title, subtitle, children, footer }: Props) {
   const insets = useSafeAreaInsets();
   const enter = useRef(new Animated.Value(0)).current;
 
@@ -36,42 +34,49 @@ export function AuthShell({ eyebrow, title, subtitle, children, footer, plain = 
         colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.orbTeal} />
-      <View style={styles.orbBlue} />
+      <View style={styles.orbA} />
+      <View style={styles.orbB} />
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
         <ScrollView
           contentContainerStyle={[
             styles.content,
-            plain ? styles.contentPlain : null,
-            { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.xxl },
+            {
+              paddingTop: insets.top + space.xxl,
+              paddingBottom: insets.bottom + space.xxl,
+            },
           ]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
         >
           <Animated.View
             style={[
-              plain ? styles.plainStack : null,
+              styles.stack,
               {
                 opacity: enter,
-                transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
+                transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }],
               },
             ]}
           >
-            <View style={[styles.hero, plain ? styles.heroPlain : null]}>
-              <AppLogo size={plain ? 120 : 88} />
-              <Text style={[styles.brand, plain ? styles.brandPlain : null]}>SkillBite</Text>
-              <Text style={[styles.eyebrow, plain ? styles.centeredText : null]}>{eyebrow}</Text>
-              <Text style={[styles.title, plain ? styles.centeredText : null]}>{title}</Text>
-              <Text style={[styles.subtitle, plain ? styles.centeredText : null]}>{subtitle}</Text>
+            <View style={styles.brandRow}>
+              <AppLogo size={36} />
+              <Text style={styles.brand}>SkillBite</Text>
             </View>
 
-            <View style={[styles.card, plain ? styles.cardPlain : null]}>{children}</View>
+            <View style={styles.hero}>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.subtitle}>{subtitle}</Text>
+            </View>
 
-            <View style={[styles.footer, plain ? styles.footerPlain : null]}>{footer}</View>
+            <View style={styles.form}>{children}</View>
+
+            <View style={styles.footer}>{footer}</View>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -83,69 +88,49 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   content: {
-    paddingHorizontal: space.lg,
-    gap: space.xl,
-  },
-  contentPlain: {
     flexGrow: 1,
+    paddingHorizontal: space.xl,
     justifyContent: "center",
   },
-  plainStack: {
+  stack: {
     gap: space.xl,
   },
-  orbTeal: {
+  orbA: {
     position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "rgba(242,131,175,0.45)",
-    top: -40,
-    right: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(59,130,196,0.14)",
+    top: -60,
+    right: -80,
   },
-  orbBlue: {
+  orbB: {
     position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(243,204,151,0.85)",
-    bottom: "12%",
-    left: -80,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(27,42,74,0.06)",
+    bottom: "10%",
+    left: -70,
   },
-  hero: {
-    alignItems: "flex-start",
-    gap: space.sm,
-    marginBottom: space.sm,
-  },
-  heroPlain: {
+  brandRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: space.sm,
   },
   brand: {
     color: colors.ink,
-    fontSize: 18,
+    fontSize: 22,
     fontFamily: font.display,
-    letterSpacing: 0.4,
+    letterSpacing: -0.3,
   },
-  brandPlain: {
-    fontSize: 36,
-    lineHeight: 42,
-    textAlign: "center",
-  },
-  centeredText: {
-    textAlign: "center",
-    alignSelf: "stretch",
-  },
-  eyebrow: {
-    marginTop: space.md,
-    color: colors.accent,
-    fontSize: 13,
-    fontFamily: font.medium, fontWeight: "600",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
+  hero: {
+    gap: space.sm,
   },
   title: {
     color: colors.ink,
-    fontSize: 34,
-    lineHeight: 42,
+    fontSize: 30,
+    lineHeight: 36,
     fontFamily: font.display,
     letterSpacing: -0.6,
   },
@@ -154,27 +139,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontFamily: font.body,
-    maxWidth: 320,
+    maxWidth: 340,
   },
-  card: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    padding: space.sm,
-    gap: space.lg,
-  },
-  cardPlain: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    padding: 0,
+  form: {
     gap: space.lg,
   },
   footer: {
     alignItems: "center",
-    gap: space.md,
-  },
-  footerPlain: {
-    marginTop: space.md,
+    paddingTop: space.sm,
   },
 });

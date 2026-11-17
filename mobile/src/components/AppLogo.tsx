@@ -1,23 +1,53 @@
-import { Image, StyleSheet, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { colors } from "../theme";
 
 type Props = {
   size?: number;
+  color?: string;
+  accent?: string;
 };
 
-export function AppLogo({ size = 96 }: Props) {
+/**
+ * SkillBite mark: rounded short tile + play, with a bite cut from the right edge.
+ * Uses evenodd so the cutout works without Mask (more reliable on RN).
+ */
+export function AppLogo({
+  size = 96,
+  color = colors.accent,
+  accent = colors.accentInk,
+}: Props) {
   return (
-    <View style={[styles.wrap, { width: size, height: size }]}>
-      <Image
-        source={require("../../assets/App_Logo.png")}
-        style={styles.image}
-        resizeMode="contain"
-        accessibilityLabel="SkillBite"
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      accessibilityLabel="SkillBite"
+    >
+      {/* Rounded square + bite circle (evenodd punches the hole) */}
+      <Path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        fill={color}
+        d="
+          M19 8
+          h26
+          a11 11 0 0 1 11 11
+          v26
+          a11 11 0 0 1 -11 11
+          H19
+          a11 11 0 0 1 -11 -11
+          V19
+          a11 11 0 0 1 11 -11
+          Z
+          M58 32
+          m-10.5 0
+          a10.5 10.5 0 1 0 21 0
+          a10.5 10.5 0 1 0 -21 0
+          Z
+        "
       />
-    </View>
+      {/* Play — weighted left of center so it sits in the solid area */}
+      <Path fill={accent} d="M24.5 22.5v19l15.5-9.5-15.5-9.5z" />
+    </Svg>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { alignItems: "center", justifyContent: "center" },
-  image: { width: "100%", height: "100%" },
-});

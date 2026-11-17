@@ -22,7 +22,6 @@ type Slide = {
   title: string;
   body: string;
   icon: AppIcon;
-  accent: string;
 };
 
 const slides: Slide[] = [
@@ -31,21 +30,18 @@ const slides: Slide[] = [
     title: "Scroll short lessons",
     body: "Home is a vertical feed of micro tutorials. Watch, swipe, and keep going.",
     icon: "play",
-    accent: colors.accent,
   },
   {
     key: "create",
     title: "Create in one tap",
     body: "Upload your own shorts, add categories and labels, then publish without an approval queue.",
     icon: "createActive",
-    accent: colors.accentAlt,
   },
   {
     key: "grow",
     title: "Save and grow",
     body: "Bookmark what matters, resume history, and organize courses like a creator studio.",
     icon: "bookmarkActive",
-    accent: colors.warning,
   },
 ];
 
@@ -85,7 +81,7 @@ export function OnboardingScreen({ onDone }: Props) {
         colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[styles.top, { paddingTop: insets.top + space.md }]}>
+      <View style={[styles.top, { paddingTop: insets.top + space.lg }]}>
         <View style={styles.headerSide} />
         <View style={styles.brandRow}>
           <AppLogo size={36} />
@@ -110,9 +106,9 @@ export function OnboardingScreen({ onDone }: Props) {
         viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
-            <View style={[styles.iconOrb, { backgroundColor: `${item.accent}22`, borderColor: `${item.accent}55` }]}>
-              <View style={[styles.iconCore, { backgroundColor: item.accent }]}>
-                <Icon name={item.icon} size={34} color={item.accent === colors.warning ? colors.accent : colors.accentInk} />
+            <View style={styles.iconOrb}>
+              <View style={styles.iconCore}>
+                <Icon name={item.icon} size={34} color={colors.accentInk} />
               </View>
             </View>
             <Text style={styles.title}>{item.title}</Text>
@@ -129,14 +125,7 @@ export function OnboardingScreen({ onDone }: Props) {
           })}
         </View>
         <Pressable style={styles.cta} onPress={next}>
-          <LinearGradient
-            colors={[colors.accentAlt, colors.accent]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ctaFill}
-          >
-            <Text style={styles.ctaText}>{index === slides.length - 1 ? "Get started" : "Continue"}</Text>
-          </LinearGradient>
+          <Text style={styles.ctaText}>{index === slides.length - 1 ? "Get started" : "Continue"}</Text>
         </Pressable>
       </View>
     </View>
@@ -150,6 +139,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: space.md,
   },
   headerSide: { width: 56, alignItems: "flex-end" },
   brandRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
@@ -158,29 +148,32 @@ const styles = StyleSheet.create({
   slide: {
     paddingHorizontal: space.xxl,
     justifyContent: "center",
+    alignItems: "center",
     gap: space.lg,
   },
   iconOrb: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: space.md,
+    marginBottom: space.sm,
   },
   iconCore: {
-    width: 78,
-    height: 78,
-    borderRadius: 28,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
     color: colors.ink,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 30,
+    lineHeight: 38,
     fontFamily: font.display,
     letterSpacing: -0.4,
     textAlign: "center",
@@ -191,6 +184,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: font.body,
     textAlign: "center",
+    maxWidth: 320,
   },
   footer: {
     paddingHorizontal: space.xl,
@@ -199,7 +193,7 @@ const styles = StyleSheet.create({
   dots: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 8,
+    gap: space.sm,
   },
   dot: {
     width: 8,
@@ -212,17 +206,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   cta: {
+    minHeight: 52,
     borderRadius: radii.pill,
-    overflow: "hidden",
-  },
-  ctaFill: {
-    minHeight: 56,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
   ctaText: {
     color: colors.accentInk,
     fontSize: 16,
-    fontFamily: font.heavy, fontWeight: "800",
+    fontFamily: font.heavy,
+    fontWeight: "800",
   },
 });

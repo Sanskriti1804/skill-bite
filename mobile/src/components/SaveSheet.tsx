@@ -115,10 +115,10 @@ export function SaveSheetHost() {
       : "Add it to your watching list or one of your courses.";
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={close} />
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
@@ -204,7 +204,7 @@ export function SaveSheetHost() {
                 <View style={styles.empty}>
                   <Icon name="course" size={28} color={colors.accent} />
                   <Text style={styles.emptyTitle}>No courses yet</Text>
-                  <Text style={styles.emptyMeta}>Create one from the Create tab, then come back here.</Text>
+                  <Text style={styles.emptyMeta}>Create one from Profile, then come back here.</Text>
                 </View>
               ) : null}
 
@@ -253,27 +253,27 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(40, 16, 28, 0.45)",
+    backgroundColor: "rgba(21, 34, 56, 0.45)",
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   sheet: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     paddingHorizontal: space.lg,
     paddingTop: space.sm,
     gap: space.md,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
   },
   handle: {
     alignSelf: "center",
-    width: 42,
+    width: 40,
     height: 4,
     borderRadius: 999,
-    backgroundColor: colors.accentAlt,
+    backgroundColor: "rgba(27,42,74,0.18)",
     marginBottom: 4,
   },
   header: {

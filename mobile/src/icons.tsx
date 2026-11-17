@@ -25,6 +25,7 @@ export const icons = {
   close: "close",
   course: "library-outline",
   video: "videocam-outline",
+  videoActive: "videocam",
   continue: "play-forward-outline",
   logout: "log-out-outline",
   switchRole: "swap-horizontal-outline",
@@ -50,7 +51,6 @@ export const icons = {
   comment: "chatbubble-outline",
   mute: "volume-mute",
   unmute: "volume-high",
-  eye: "eye-outline",
   chevronDown: "chevron-down",
   grid: "grid-outline",
   gridActive: "grid",
@@ -72,16 +72,18 @@ export function Icon({ name, size = 24, color = colors.ink }: IconProps) {
 }
 
 export function tabIcon(
-  route: "Home" | "Explore" | "Create" | "Profile",
+  route: "Home" | "Bites" | "Explore" | "Learning" | "Profile",
   focused: boolean,
 ): IconName {
   switch (route) {
     case "Home":
       return focused ? icons.homeActive : icons.home;
+    case "Bites":
+      return focused ? icons.videoActive : icons.video;
     case "Explore":
       return focused ? icons.exploreActive : icons.explore;
-    case "Create":
-      return focused ? icons.createActive : icons.create;
+    case "Learning":
+      return focused ? icons.learnActive : icons.learn;
     case "Profile":
       return focused ? icons.accountActive : icons.account;
   }

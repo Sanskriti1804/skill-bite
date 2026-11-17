@@ -7,12 +7,12 @@ export function LinearishScrim() {
     <>
       <LinearGradient
         pointerEvents="none"
-        colors={["rgba(196,54,112,0.45)", "transparent"]}
+        colors={["rgba(21,34,56,0.45)", "transparent"]}
         style={styles.top}
       />
       <LinearGradient
         pointerEvents="none"
-        colors={["transparent", "rgba(196,54,112,0.28)", "rgba(196,54,112,0.88)"]}
+        colors={["transparent", "rgba(21,34,56,0.28)", "rgba(21,34,56,0.88)"]}
         locations={[0, 0.35, 1]}
         style={styles.bottom}
       />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { upsertStudioDraft, updateStudioDraftStatus } from "../../creator/drafts";
 import { pickShortVideo } from "../../creator/media";
@@ -9,7 +9,7 @@ import { contentApi, type OwnedContent } from "../../services/content";
 import { useSession } from "../../session";
 import { colors, font, radii, space } from "../../theme";
 import type { ContentItem } from "../../types";
-import { Banner, Button, Field, LoadingState, Screen, Title } from "../../ui";
+import { ActionSheet, Banner, Button, Field, LoadingState, Screen, Title } from "../../ui";
 import type { RootStackParamList } from "../../navigation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CourseStudio">;
@@ -41,6 +41,7 @@ export function CourseStudioScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(!!existingId);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     void ensurePublisher().catch((caught) => {
@@ -145,21 +146,7 @@ export function CourseStudioScreen({ navigation, route }: Props) {
 
   function confirmDeletePlaylist() {
     if (!contentId) return;
-    Alert.alert(
-      "Delete course?",
-      "This permanently deletes the course. Videos stay in the library.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => void run(async () => {
-            await contentApi.deleteCourse(session!.token, contentId);
-            navigation.goBack();
-          }),
-        },
-      ],
-    );
+    setDeleteOpen(true);
   }
 
   if (!session) {
@@ -425,6 +412,24 @@ export function CourseStudioScreen({ navigation, route }: Props) {
         {message ? <Banner tone="info">{message}</Banner> : null}
         {error ? <Banner>{error}</Banner> : null}
       </ScrollView>
+
+      <ActionSheet
+        visible={deleteOpen}
+        title="Delete course?"
+        message="This permanently deletes the course. Videos stay in the library."
+        actions={[
+          {
+            label: "Delete",
+            tone: "danger",
+            onPress: () =>
+              void run(async () => {
+                await contentApi.deleteCourse(session!.token, contentId);
+                navigation.goBack();
+              }),
+          },
+        ]}
+        onClose={() => setDeleteOpen(false)}
+      />
     </Screen>
   );
 }

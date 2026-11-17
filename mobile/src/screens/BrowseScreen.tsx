@@ -28,7 +28,7 @@ import { Banner, EmptyState, LoadingState } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "../navigation";
 
 type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, "Home">,
+  BottomTabScreenProps<MainTabParamList, "Bites">,
   NativeStackScreenProps<RootStackParamList>
 >;
 
@@ -184,7 +184,7 @@ export function BrowseScreen({ navigation }: Props) {
       {!loading && !items.length ? (
         <View style={styles.emptyWrap}>
           <Icon name="empty" size={40} color={colors.feedMuted} />
-          <EmptyState>No shorts yet. Upload from Create.</EmptyState>
+          <EmptyState>No bites yet. Upload from Profile → Create.</EmptyState>
         </View>
       ) : null}
 

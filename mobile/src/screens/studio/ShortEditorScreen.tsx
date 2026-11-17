@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.videoBg,
   },
-  preview: { width: "100%", height: 320, backgroundColor: "#1a0f14" },
+  preview: { width: "100%", height: 320, backgroundColor: colors.videoBg },
   previewPlaceholder: { alignItems: "center", justifyContent: "center" },
   previewOverlay: {
     ...StyleSheet.absoluteFill,

@@ -1,16 +1,22 @@
+import { useCallback, useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSession } from "./session";
 import { tabIcon } from "./icons";
+import { hasCompletedInterests } from "./interestsStore";
 import { colors, font } from "./theme";
 import { LoadingState, Screen } from "./ui";
 import { BookmarksScreen } from "./screens/BookmarksScreen";
 import { BrowseScreen } from "./screens/BrowseScreen";
-import { CreateScreen } from "./screens/CreateScreen";
 import { ExploreScreen } from "./screens/ExploreScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
+import { HomeScreen } from "./screens/HomeScreen";
+import { InterestSelectionScreen } from "./screens/InterestSelectionScreen";
+import { LearningScreen } from "./screens/LearningScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { NotificationsScreen } from "./screens/NotificationsScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
@@ -26,8 +32,9 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
+  Bites: undefined;
   Explore: undefined;
-  Create: undefined;
+  Learning: undefined;
   Profile: undefined;
 };
 
@@ -58,29 +65,39 @@ const appTheme = {
 };
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 8);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
+          position: "relative",
+          height: 56 + bottomPad,
+          paddingBottom: bottomPad,
+          paddingTop: 6,
           backgroundColor: colors.tabBar,
+          borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.line,
-          height: 70,
-          paddingBottom: 10,
-          paddingTop: 8,
+          borderWidth: 0,
+          borderRadius: 0,
           elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.tabInactive,
-        tabBarLabelStyle: { fontSize: 11, fontFamily: font.bold, fontWeight: "700" },
+        tabBarLabelStyle: { fontSize: 10, fontFamily: font.bold, fontWeight: "700", marginTop: 2 },
+        tabBarItemStyle: { paddingVertical: 2 },
         tabBarIcon: ({ focused, color, size }) => (
-          <Ionicons name={tabIcon(route.name, focused)} size={size} color={color} />
+          <Ionicons name={tabIcon(route.name, focused)} size={size - 2} color={color} />
         ),
       })}
     >
-      <Tab.Screen name="Home" component={BrowseScreen} options={{ title: "Home" }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Home" }} />
+      <Tab.Screen name="Bites" component={BrowseScreen} options={{ title: "Bites" }} />
       <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: "Explore" }} />
-      <Tab.Screen name="Create" component={CreateScreen} options={{ title: "Create" }} />
+      <Tab.Screen name="Learning" component={LearningScreen} options={{ title: "Learning" }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: "Profile" }} />
     </Tab.Navigator>
   );
@@ -111,12 +128,49 @@ function AuthRoot() {
 
 export function AppNavigation() {
   const { ready, session } = useSession();
-  if (!ready) {
+  const [interestsReady, setInterestsReady] = useState(false);
+  const [needsInterests, setNeedsInterests] = useState(false);
+
+  const refreshInterests = useCallback(async () => {
+    if (!session?.userId) {
+      setNeedsInterests(false);
+      setInterestsReady(true);
+      return;
+    }
+    const done = await hasCompletedInterests(session.userId);
+    setNeedsInterests(!done);
+    setInterestsReady(true);
+  }, [session?.userId]);
+
+  useEffect(() => {
+    setInterestsReady(false);
+    void refreshInterests();
+  }, [refreshInterests]);
+
+  if (!ready || (session && !interestsReady)) {
     return <Screen><LoadingState /></Screen>;
   }
+
   return (
     <NavigationContainer theme={appTheme}>
-      {!session ? <AuthRoot /> : <AppRoot />}
+      {!session ? (
+        <AuthRoot />
+      ) : needsInterests ? (
+        <View style={styles.fill}>
+          <InterestSelectionScreen
+            userKey={session.userId}
+            onDone={() => {
+              setNeedsInterests(false);
+            }}
+          />
+        </View>
+      ) : (
+        <AppRoot />
+      )}
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+});

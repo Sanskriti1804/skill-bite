@@ -1,19 +1,17 @@
 import { useCallback, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { useFocusEffect, type CompositeScreenProps } from "@react-navigation/native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Icon } from "../icons";
 import { contentApi, type OwnedContent } from "../services/content";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
-import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
-import type { MainTabParamList, RootStackParamList } from "../navigation";
+import { ActionSheet, Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
+import type { RootStackParamList } from "../navigation";
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, "Create">,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList>;
+};
 
 export function CreateScreen({ navigation }: Props) {
   const { session, ensurePublisher } = useSession();
@@ -23,6 +21,7 @@ export function CreateScreen({ navigation }: Props) {
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<OwnedContent | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -51,27 +50,18 @@ export function CreateScreen({ navigation }: Props) {
     void load();
   }, [load]));
 
-  function confirmDelete(item: OwnedContent) {
-    Alert.alert("Delete draft?", `"${item.description || item.title || "Untitled short"}" will be removed permanently.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => void (async () => {
-          if (!session?.token) return;
-          setBusyId(item.contentId);
-          try {
-            await contentApi.deleteVideo(session.token, item.contentId);
-            setDrafts((current) => current.filter((row) => row.contentId !== item.contentId));
-            setMessage("Draft deleted.");
-          } catch (caught) {
-            setError(caught instanceof Error ? caught.message : "Could not delete draft");
-          } finally {
-            setBusyId("");
-          }
-        })(),
-      },
-    ]);
+  async function removeDraft(item: OwnedContent) {
+    if (!session?.token) return;
+    setBusyId(item.contentId);
+    try {
+      await contentApi.deleteVideo(session.token, item.contentId);
+      setDrafts((current) => current.filter((row) => row.contentId !== item.contentId));
+      setMessage("Draft deleted.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete draft");
+    } finally {
+      setBusyId("");
+    }
   }
 
   return (
@@ -124,7 +114,7 @@ export function CreateScreen({ navigation }: Props) {
                 <Pressable onPress={() => navigation.navigate("ShortEditor", { contentId: item.contentId })}>
                   <Text style={styles.draftAction}>Edit</Text>
                 </Pressable>
-                <Pressable disabled={busyId === item.contentId} onPress={() => confirmDelete(item)}>
+                <Pressable disabled={busyId === item.contentId} onPress={() => setDeleteTarget(item)}>
                   <Text style={styles.draftDanger}>Delete</Text>
                 </Pressable>
               </View>
@@ -132,6 +122,26 @@ export function CreateScreen({ navigation }: Props) {
           </View>
         ) : null}
       </ScrollView>
+
+      <ActionSheet
+        visible={Boolean(deleteTarget)}
+        title="Delete draft?"
+        message={
+          deleteTarget
+            ? `"${deleteTarget.description || deleteTarget.title || "Untitled short"}" will be removed permanently.`
+            : undefined
+        }
+        actions={[
+          {
+            label: "Delete",
+            tone: "danger",
+            onPress: () => {
+              if (deleteTarget) void removeDraft(deleteTarget);
+            },
+          },
+        ]}
+        onClose={() => setDeleteTarget(null)}
+      />
     </Screen>
   );
 }

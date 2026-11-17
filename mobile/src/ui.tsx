@@ -2,15 +2,22 @@ import { useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "./icons";
 import { colors, font, radii, space } from "./theme";
+
+export type ActionSheetAction = {
+  label: string;
+  onPress: () => void;
+  tone?: "default" | "danger";
+};
 
 export function Button({
   children,
@@ -173,14 +180,81 @@ export function Dialog({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.dialogBackdrop}>
-      <View style={styles.dialog} accessibilityRole="summary">
-        <Text style={styles.section}>{title}</Text>
+    <View style={styles.sheetRoot}>
+      <Pressable style={styles.sheetBackdrop} onPress={onClose} />
+      <View
+        style={[styles.sheetPanel, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}
+        accessibilityRole="summary"
+      >
+        <View style={styles.sheetHandle} />
+        <Text style={styles.sheetTitle}>{title}</Text>
         {children}
         <Button onPress={onClose}>Close</Button>
       </View>
     </View>
+  );
+}
+
+/** Calm navy bottom sheet for menus and confirms — replaces native Alert.alert. */
+export function ActionSheet({
+  visible,
+  title,
+  message,
+  actions,
+  onClose,
+  cancelLabel = "Cancel",
+}: {
+  visible: boolean;
+  title: string;
+  message?: string;
+  actions: ActionSheetAction[];
+  onClose: () => void;
+  cancelLabel?: string;
+}) {
+  const insets = useSafeAreaInsets();
+
+  function runAction(action: ActionSheetAction) {
+    onClose();
+    setTimeout(() => action.onPress(), 40);
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.sheetRoot}>
+        <Pressable style={styles.sheetBackdrop} onPress={onClose} />
+        <View style={[styles.sheetPanel, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>{title}</Text>
+          {message ? <Text style={styles.sheetMessage}>{message}</Text> : null}
+          <View style={styles.sheetActions}>
+            {actions.map((action) => (
+              <Pressable
+                key={action.label}
+                style={({ pressed }) => [styles.sheetAction, pressed ? styles.sheetActionPressed : null]}
+                onPress={() => runAction(action)}
+              >
+                <Text
+                  style={[
+                    styles.sheetActionText,
+                    action.tone === "danger" ? styles.sheetActionDanger : null,
+                  ]}
+                >
+                  {action.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.sheetCancel, pressed ? styles.sheetActionPressed : null]}
+            onPress={onClose}
+          >
+            <Text style={styles.sheetCancelText}>{cancelLabel}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -211,9 +285,9 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.ink, fontSize: 15, fontFamily: font.bold, fontWeight: "700", textAlign: "center" },
   onAccent: { color: colors.accentInk },
   field: { gap: space.sm },
-  label: { fontSize: 14, lineHeight: 20, fontFamily: font.bold, fontWeight: "700", color: colors.inkMuted },
+  label: { fontSize: 13, lineHeight: 18, fontFamily: font.bold, fontWeight: "700", color: colors.inkMuted },
   inputWrap: {
-    minHeight: 48,
+    minHeight: 50,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radii.md,
@@ -221,11 +295,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   input: {
-    minHeight: 48,
-    paddingHorizontal: space.md,
+    minHeight: 50,
+    paddingHorizontal: space.lg,
     color: colors.ink,
     fontFamily: font.body,
-    fontSize: 16,
+    fontSize: 15,
   },
   inputWithEye: {
     paddingRight: 48,
@@ -273,18 +347,79 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   cardTitle: { fontSize: 16, lineHeight: 24, fontFamily: font.bold, fontWeight: "700", color: colors.ink },
-  dialogBackdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(196,54,112,0.35)",
-    justifyContent: "center",
-    padding: space.lg,
+  sheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(21, 34, 56, 0.45)",
   },
-  dialog: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.lg,
+  sheetBackdrop: { ...StyleSheet.absoluteFill },
+  sheetPanel: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+    gap: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(27,42,74,0.18)",
+    marginBottom: 4,
+  },
+  sheetTitle: {
+    color: colors.ink,
+    fontSize: 20,
+    fontFamily: font.display,
+    textAlign: "left",
+  },
+  sheetMessage: {
+    color: colors.inkMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: font.body,
+    marginTop: -4,
+  },
+  sheetActions: {
+    gap: space.sm,
+  },
+  sheetAction: {
+    minHeight: 52,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: space.lg,
-    gap: space.lg,
+    backgroundColor: colors.bg,
+    paddingHorizontal: space.lg,
+    justifyContent: "center",
+  },
+  sheetActionPressed: {
+    backgroundColor: colors.accentSoft,
+  },
+  sheetActionText: {
+    color: colors.ink,
+    fontSize: 16,
+    fontFamily: font.bold,
+    fontWeight: "700",
+    textAlign: "left",
+  },
+  sheetActionDanger: {
+    color: colors.danger,
+  },
+  sheetCancel: {
+    minHeight: 48,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: space.xs,
+  },
+  sheetCancelText: {
+    color: colors.inkMuted,
+    fontSize: 15,
+    fontFamily: font.bold,
+    fontWeight: "700",
   },
 });

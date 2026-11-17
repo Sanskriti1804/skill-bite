@@ -62,6 +62,7 @@ export type BookmarkItem = {
 export type ProgressItem = {
   videoContentId: string;
   lastPositionSeconds: number;
+  lastWatchedAt?: string | null;
   completedAt: string | null;
 };
 
