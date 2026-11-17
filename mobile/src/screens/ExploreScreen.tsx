@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Dimensions,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -7,7 +16,7 @@ import { api } from "../api";
 import { Icon } from "../icons";
 import { colors, font, radii, space } from "../theme";
 import type { Category, ContentItem } from "../types";
-import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
+import { Banner, EmptyState, LoadingState } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "../navigation";
 
 type Props = CompositeScreenProps<
@@ -15,8 +24,31 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+const GAP = 1;
+const COLS = 3;
+const TILE_W = (Dimensions.get("window").width - GAP * (COLS - 1)) / COLS;
+const TILE_H = TILE_W * 1.45;
+
+function formatViews(contentId: string): string {
+  let hash = 0;
+  for (let i = 0; i < contentId.length; i += 1) hash = (hash * 31 + contentId.charCodeAt(i)) >>> 0;
+  const value = 800 + (hash % 12_000_000);
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return String(value);
+}
+
+function tileTint(contentId: string): string {
+  const tones = ["#C43670", "#A12E5C", "#8B2450", "#D45A88", "#6E1C40"];
+  let hash = 0;
+  for (let i = 0; i < contentId.length; i += 1) hash = (hash + contentId.charCodeAt(i)) % tones.length;
+  return tones[hash];
+}
+
 export function ExploreScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
+  const [draftQuery, setDraftQuery] = useState("");
   const [category, setCategory] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -33,8 +65,8 @@ export function ExploreScreen({ navigation }: Props) {
         api<{ items: ContentItem[] }>(`/api/v1/content?${params.toString()}`),
         api<{ items: Category[] }>("/api/v1/categories"),
       ]);
-      setItems(content.items);
-      setCategories(cats.items);
+      setItems(content.items.filter((item) => item.contentType === "VIDEO"));
+      setCategories(cats.items.filter((item) => item.slug !== "trending"));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load Explore");
     } finally {
@@ -47,98 +79,108 @@ export function ExploreScreen({ navigation }: Props) {
     void load();
   }, [load]);
 
-  return (
-    <Screen>
-      <Title>Explore</Title>
-      <Text style={styles.sub}>Search shorts and playlists by topic or category.</Text>
+  const chips = useMemo(
+    () => [{ slug: "", name: "All" }, ...categories],
+    [categories],
+  );
 
-      <View style={styles.search}>
-        <Icon name="search" size={18} color={colors.inkMuted} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search titles, tags, keywords"
-          placeholderTextColor={colors.inkMuted}
-          style={styles.input}
-          returnKeyType="search"
-          onSubmitEditing={() => {
-            setLoading(true);
-            void load();
+  return (
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <View style={styles.search}>
+          <Icon name="search" size={18} color={colors.inkMuted} />
+          <TextInput
+            value={draftQuery}
+            onChangeText={setDraftQuery}
+            placeholder="Search shorts"
+            placeholderTextColor={colors.inkMuted}
+            style={styles.input}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onSubmitEditing={() => setQuery(draftQuery.trim())}
+          />
+        </View>
+
+        <FlatList
+          horizontal
+          data={chips}
+          keyExtractor={(item) => item.slug || "all"}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+          renderItem={({ item }) => {
+            const selected = category === item.slug;
+            return (
+              <Pressable
+                style={[styles.chip, selected ? styles.chipOn : null]}
+                onPress={() => setCategory(item.slug)}
+              >
+                <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{item.name}</Text>
+              </Pressable>
+            );
           }}
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        <Pressable style={[styles.chip, !category ? styles.chipOn : null]} onPress={() => setCategory("")}>
-          <Text style={[styles.chipText, !category ? styles.chipTextOn : null]}>All</Text>
-        </Pressable>
-        {categories.map((item) => {
-          const selected = category === item.slug;
-          return (
-            <Pressable key={item.slug} style={[styles.chip, selected ? styles.chipOn : null]} onPress={() => setCategory(item.slug)}>
-              <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{item.name}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {error ? <Banner>{error}</Banner> : null}
+      {error ? (
+        <View style={styles.bannerWrap}>
+          <Banner>{error}</Banner>
+        </View>
+      ) : null}
       {loading ? <LoadingState /> : null}
 
-      <ScrollView contentContainerStyle={{ gap: 12, paddingBottom: 32 }}>
-        {!loading && !items.length ? <EmptyState>No published content matches.</EmptyState> : null}
-        {items.map((item) => {
-          const labels = [...(item.categories ?? []), ...(item.tags ?? [])].slice(0, 3);
-          return (
-            <Pressable
-              key={item.contentId}
-              style={styles.row}
-              onPress={() => navigation.navigate("Watch", { contentId: item.contentId })}
-            >
-              <View style={styles.iconWrap}>
-                <Icon name={item.contentType === "COURSE" ? "course" : "video"} size={20} color={colors.accent} />
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-                <Text style={styles.meta}>{item.contentType === "COURSE" ? "Playlist" : "Short"}</Text>
-                {labels.length ? (
-                  <View style={styles.labelRow}>
-                    {labels.map((label) => (
-                      <View key={`${item.contentId}-${label.slug}`} style={styles.labelChip}>
-                        <Text style={styles.labelChipText}>{label.name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-              <Icon name="continue" size={18} color={colors.inkMuted} />
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </Screen>
+      {!loading && !items.length ? (
+        <View style={styles.empty}>
+          <EmptyState>{query || category ? "No shorts match." : "No published shorts yet."}</EmptyState>
+        </View>
+      ) : null}
+
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.contentId}
+        numColumns={COLS}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.grid}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <Pressable
+            style={[styles.tile, { backgroundColor: tileTint(item.contentId) }]}
+            onPress={() => navigation.navigate("Watch", { contentId: item.contentId })}
+          >
+            <View style={styles.playMark}>
+              <Icon name="play" size={18} color={colors.feedText} />
+            </View>
+            <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
+            <View style={styles.views}>
+              <Icon name="eye" size={12} color={colors.feedText} />
+              <Text style={styles.viewsText}>{formatViews(item.contentId)}</Text>
+            </View>
+          </Pressable>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sub: { color: colors.inkMuted, fontSize: 14, lineHeight: 20, fontFamily: font.body, marginTop: -8 },
+  root: { flex: 1, backgroundColor: colors.bg },
+  header: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.sm },
   search: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.surface,
+    minHeight: 44,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.line,
+    backgroundColor: colors.surface,
     paddingHorizontal: space.lg,
-    minHeight: 48,
   },
   input: { flex: 1, color: colors.ink, fontSize: 15, fontFamily: font.body, paddingVertical: 10 },
   chips: { gap: 8, paddingVertical: 4 },
   chip: {
+    minHeight: 34,
     paddingHorizontal: 14,
-    maxWidth: 180,
-    paddingVertical: 10,
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.line,
@@ -146,34 +188,58 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   chipOn: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-  chipText: { color: colors.inkMuted, fontFamily: font.bold, fontWeight: "700", fontSize: 13, textAlign: "center" },
+  chipText: { color: colors.inkMuted, fontFamily: font.bold, fontWeight: "700", fontSize: 13 },
   chipTextOn: { color: colors.accent },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: space.lg,
+  bannerWrap: { paddingHorizontal: space.lg },
+  grid: { paddingBottom: 24 },
+  row: { gap: GAP, marginBottom: GAP },
+  tile: {
+    width: TILE_W,
+    height: TILE_H,
+    overflow: "hidden",
+    justifyContent: "flex-end",
+    padding: 8,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.accentSoft,
+  playMark: {
+    position: "absolute",
+    top: "40%",
+    alignSelf: "center",
+    left: "50%",
+    marginLeft: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.28)",
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { color: colors.ink, fontSize: 16, fontFamily: font.bold, fontWeight: "700" },
-  meta: { color: colors.inkMuted, fontSize: 12, fontFamily: font.medium, fontWeight: "600" },
-  labelRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  labelChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.pill,
-    backgroundColor: colors.accentSoft,
+  tileTitle: {
+    color: colors.feedText,
+    fontSize: 12,
+    lineHeight: 15,
+    fontFamily: font.bold,
+    fontWeight: "700",
+    marginBottom: 18,
+    textShadowColor: "rgba(0,0,0,0.45)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  labelChipText: { color: colors.accent, fontSize: 11, fontFamily: font.bold, fontWeight: "700" },
+  views: {
+    position: "absolute",
+    left: 6,
+    bottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  viewsText: {
+    color: colors.feedText,
+    fontSize: 11,
+    fontFamily: font.bold,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  empty: { paddingVertical: space.xxl, paddingHorizontal: space.lg },
 });

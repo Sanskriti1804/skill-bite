@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { upsertStudioDraft, updateStudioDraftStatus } from "../../creator/drafts";
 import { pickShortVideo } from "../../creator/media";
 import { Icon } from "../../icons";
-import { contentApi, type Tag } from "../../services/content";
+import { contentApi, type OwnedContent } from "../../services/content";
 import { useSession } from "../../session";
 import { colors, font, radii, space } from "../../theme";
 import { Banner, Button, Field, LoadingState, Screen, Title } from "../../ui";
@@ -12,11 +12,18 @@ import type { RootStackParamList } from "../../navigation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CourseStudio">;
 
+type Topic = {
+  lessonId?: string;
+  title: string;
+  videoContentId: string;
+  position: number;
+};
+
 type Chapter = {
   moduleId: string;
   title: string;
   position: number;
-  topics: { title: string; videoContentId: string; position: number }[];
+  topics: Topic[];
 };
 
 export function CourseStudioScreen({ navigation, route }: Props) {
@@ -25,11 +32,10 @@ export function CourseStudioScreen({ navigation, route }: Props) {
   const [contentId, setContentId] = useState(existingId ?? "");
   const [seriesTitle, setSeriesTitle] = useState("");
   const [chapterTitle, setChapterTitle] = useState("");
-  const [topicTitle, setTopicTitle] = useState("");
+  const [topicDescription, setTopicDescription] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [tagId, setTagId] = useState("");
+  const [ownedVideos, setOwnedVideos] = useState<OwnedContent[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(!!existingId);
   const [message, setMessage] = useState("");
@@ -43,27 +49,23 @@ export function CourseStudioScreen({ navigation, route }: Props) {
   }, [ensurePublisher]);
 
   useEffect(() => {
-    if (!session?.token) return;
-    contentApi.tags(session.token)
-      .then((result) => {
-        setTags(result.items);
-        if (!tagId && result.items[0]) setTagId(result.items[0].tagId);
-      })
-      .catch(() => undefined);
-  }, [session?.token]);
-
-  useEffect(() => {
     if (!session?.token || !existingId) return;
     contentApi.detail(existingId, session.token)
       .then(async (detail) => {
         setSeriesTitle(String(detail.title ?? ""));
         setContentId(existingId);
-        const modules = (detail.modules as { moduleId: string; title: string; position: number; lessons: { title: string; position: number; videoContentId: string }[] }[] | undefined) ?? [];
+        const modules = (detail.modules as {
+          moduleId: string;
+          title: string;
+          position: number;
+          lessons: { lessonId?: string; title: string; position: number; videoContentId: string }[];
+        }[] | undefined) ?? [];
         setChapters(modules.map((module) => ({
           moduleId: module.moduleId,
           title: module.title,
           position: module.position,
           topics: module.lessons.map((lesson) => ({
+            lessonId: lesson.lessonId,
             title: lesson.title,
             position: lesson.position,
             videoContentId: lesson.videoContentId,
@@ -86,6 +88,22 @@ export function CourseStudioScreen({ navigation, route }: Props) {
     if (!existingId) setLoading(false);
   }, [existingId]);
 
+  useEffect(() => {
+    if (!session?.token) return;
+    void contentApi.mine(session.token)
+      .then((result) => {
+        const used = new Set(
+          chapters.flatMap((chapter) => chapter.topics.map((topic) => topic.videoContentId)),
+        );
+        setOwnedVideos(
+          result.items.filter(
+            (item) => item.contentType === "VIDEO" && item.status !== "REMOVED" && item.hasMedia && !used.has(item.contentId),
+          ),
+        );
+      })
+      .catch(() => setOwnedVideos([]));
+  }, [chapters, session?.token]);
+
   async function run(work: () => Promise<void>) {
     if (!session?.token || !session.userId) return;
     setBusy(true);
@@ -98,6 +116,26 @@ export function CourseStudioScreen({ navigation, route }: Props) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function confirmDeletePlaylist() {
+    if (!contentId) return;
+    Alert.alert(
+      "Delete playlist?",
+      "This permanently removes the playlist. Topic shorts stay in your library.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => void run(async () => {
+            await contentApi.deleteCourse(session!.token, contentId);
+            setMessage("Playlist deleted.");
+            navigation.goBack();
+          }),
+        },
+      ],
+    );
   }
 
   if (!session) {
@@ -123,7 +161,7 @@ export function CourseStudioScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
       <Text style={styles.sub}>
-        Sections group topics. Each topic is one short. Viewers may watch topics in any order.
+        Add or remove shorts, or delete the whole playlist. Viewers can watch topics in any order.
       </Text>
 
       <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 48 }}>
@@ -187,35 +225,27 @@ export function CourseStudioScreen({ navigation, route }: Props) {
           })}
         </ScrollView>
 
-        <Text style={styles.section}>Topics in this section</Text>
+        <Text style={styles.section}>Videos in this section</Text>
         {!selectedChapter ? <Banner tone="info">Add or select a section first.</Banner> : null}
         {selectedChapter ? (
           <>
-            <Field label="Topic name" value={topicTitle} onChangeText={setTopicTitle} hint="One short tutorial inside the chapter" />
-            <Text style={styles.label}>Topic tag for the short video</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {tags.map((tag) => {
-                const selected = tag.tagId === tagId;
-                return (
-                  <Pressable key={tag.tagId} style={[styles.chip, selected ? styles.chipOn : null]} onPress={() => setTagId(tag.tagId)}>
-                    <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{tag.name}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <Field
+              label="New short description"
+              value={topicDescription}
+              onChangeText={setTopicDescription}
+              hint="Required for a new upload in this playlist."
+            />
             <Pressable
               style={styles.upload}
-              disabled={busy || !topicTitle.trim()}
+              disabled={busy || !topicDescription.trim()}
               onPress={() => void run(async () => {
                 const picked = await pickShortVideo();
                 if (!picked) return;
                 const video = await contentApi.createVideo(session.token, {
-                  title: topicTitle.trim(),
-                  description: `${seriesTitle} · ${selectedChapter.title} · ${topicTitle.trim()}`,
+                  description: topicDescription.trim(),
                   sources: "Original creator material",
-                  keywords: `${seriesTitle}, ${selectedChapter.title}, ${topicTitle}`,
+                  keywords: `${seriesTitle}, ${selectedChapter.title}`,
                   durationSeconds: picked.durationSeconds,
-                  tagIds: tagId ? [tagId] : [],
                 });
                 await contentApi.saveMedia(session.token, video.contentId, {
                   mimeType: picked.mimeType,
@@ -223,8 +253,8 @@ export function CourseStudioScreen({ navigation, route }: Props) {
                   durationSeconds: picked.durationSeconds,
                 });
                 const position = selectedChapter.topics.length + 1;
-                await contentApi.addLesson(session.token, selectedChapter.moduleId, {
-                  title: topicTitle.trim(),
+                const lesson = await contentApi.addLesson(session.token, selectedChapter.moduleId, {
+                  title: topicDescription.trim().slice(0, 80),
                   position,
                   videoContentId: video.contentId,
                 });
@@ -232,32 +262,104 @@ export function CourseStudioScreen({ navigation, route }: Props) {
                   chapter.moduleId === selectedChapter.moduleId
                     ? {
                         ...chapter,
-                        topics: [...chapter.topics, { title: topicTitle.trim(), position, videoContentId: video.contentId }],
+                        topics: [
+                          ...chapter.topics,
+                          {
+                            lessonId: lesson.lessonId,
+                            title: topicDescription.trim().slice(0, 80),
+                            position,
+                            videoContentId: video.contentId,
+                          },
+                        ],
                       }
                     : chapter
                 )));
                 await upsertStudioDraft(session.userId, {
                   contentId: video.contentId,
-                  title: topicTitle.trim(),
+                  title: topicDescription.trim().slice(0, 80),
                   status: "DRAFT",
                   kind: "VIDEO",
                   updatedAt: new Date().toISOString(),
                 });
-                setTopicTitle("");
-                setMessage("Topic short uploaded and linked to this section.");
+                setTopicDescription("");
+                setMessage("Short uploaded and added to this section.");
               })}
             >
               <Icon name="video" size={22} color={colors.accent} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.uploadTitle}>Upload topic short</Text>
-                <Text style={styles.uploadMeta}>Creates the short and attaches it as this section topic.</Text>
+                <Text style={styles.uploadTitle}>Upload & add short</Text>
+                <Text style={styles.uploadMeta}>Creates a new short and attaches it here.</Text>
               </View>
             </Pressable>
+
+            {ownedVideos.length ? (
+              <View style={styles.addExisting}>
+                <Text style={styles.label}>Add existing short</Text>
+                {ownedVideos.slice(0, 8).map((video) => (
+                  <Pressable
+                    key={video.contentId}
+                    style={styles.existingRow}
+                    disabled={busy}
+                    onPress={() => void run(async () => {
+                      const position = selectedChapter.topics.length + 1;
+                      const lesson = await contentApi.addLesson(session.token, selectedChapter.moduleId, {
+                        title: (video.description || video.title || "Video").slice(0, 80),
+                        position,
+                        videoContentId: video.contentId,
+                      });
+                      setChapters((current) => current.map((chapter) => (
+                        chapter.moduleId === selectedChapter.moduleId
+                          ? {
+                              ...chapter,
+                              topics: [
+                                ...chapter.topics,
+                                {
+                                  lessonId: lesson.lessonId,
+                                  title: (video.description || video.title || "Video").slice(0, 80),
+                                  position,
+                                  videoContentId: video.contentId,
+                                },
+                              ],
+                            }
+                          : chapter
+                      )));
+                      setMessage("Existing short added to this section.");
+                    })}
+                  >
+                    <Text style={styles.existingText} numberOfLines={2}>
+                      {video.description || video.title || "Untitled short"}
+                    </Text>
+                    <Text style={styles.addLink}>Add</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
 
             {selectedChapter.topics.map((topic) => (
               <View key={topic.videoContentId} style={styles.topicRow}>
                 <Icon name="learn" size={18} color={colors.accent} />
                 <Text style={styles.topicText}>{topic.position}. {topic.title}</Text>
+                {topic.lessonId ? (
+                  <Pressable
+                    disabled={busy}
+                    onPress={() => void run(async () => {
+                      await contentApi.removeLesson(session.token, selectedChapter.moduleId, topic.lessonId!);
+                      setChapters((current) => current.map((chapter) => (
+                        chapter.moduleId === selectedChapter.moduleId
+                          ? {
+                              ...chapter,
+                              topics: chapter.topics
+                                .filter((row) => row.videoContentId !== topic.videoContentId)
+                                .map((row, index) => ({ ...row, position: index + 1 })),
+                            }
+                          : chapter
+                      )));
+                      setMessage("Short removed from playlist.");
+                    })}
+                  >
+                    <Text style={styles.removeText}>Remove</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ))}
           </>
@@ -275,11 +377,18 @@ export function CourseStudioScreen({ navigation, route }: Props) {
             }
             const result = await contentApi.publishCourse(session.token, contentId);
             await updateStudioDraftStatus(session.userId, contentId, result.status);
-            setMessage("Playlist published. Topic shorts are live on Home.");
+            setMessage("Playlist published.");
           })}
         >
           Publish playlist
         </Button>
+
+        {contentId ? (
+          <Pressable style={styles.deleteRow} disabled={busy} onPress={confirmDeletePlaylist}>
+            <Icon name="logout" size={18} color={colors.danger} />
+            <Text style={styles.deleteText}>Delete whole playlist</Text>
+          </Pressable>
+        ) : null}
 
         {message ? <Banner tone="info">{message}</Banner> : null}
         {error ? <Banner>{error}</Banner> : null}
@@ -319,6 +428,22 @@ const styles = StyleSheet.create({
   },
   uploadTitle: { color: colors.ink, fontFamily: font.bold, fontWeight: "700" },
   uploadMeta: { color: colors.inkMuted, fontSize: 12, marginTop: 2 },
+  addExisting: {
+    gap: 8,
+    padding: space.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  existingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  existingText: { flex: 1, color: colors.ink, fontFamily: font.medium, fontWeight: "600", fontSize: 13 },
+  addLink: { color: colors.accent, fontFamily: font.heavy, fontWeight: "800", fontSize: 13 },
   topicRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -328,4 +453,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentSoft,
   },
   topicText: { color: colors.ink, fontFamily: font.medium, fontWeight: "600", flex: 1 },
+  removeText: { color: colors.danger, fontFamily: font.heavy, fontWeight: "800", fontSize: 13 },
+  deleteRow: {
+    minHeight: 48,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  deleteText: { color: colors.danger, fontFamily: font.bold, fontWeight: "700", fontSize: 15 },
 });

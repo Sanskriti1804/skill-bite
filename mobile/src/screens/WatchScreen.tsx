@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Video, ResizeMode, type AVPlaybackStatus } from "expo-av";
+import { useEventListener } from "expo";
+import { useVideoPlayer, VideoView } from "expo-video";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api, mediaUrl } from "../api";
 import { IconButton } from "../components/IconButton";
-import { LinearishScrim } from "../components/Scrim";
+import { promptSaveToPlaylist } from "../creator/saveToPlaylist";
 import { Icon } from "../icons";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
@@ -20,8 +21,8 @@ export function WatchScreen({ route, navigation }: Props) {
   const { contentId } = route.params;
   const insets = useSafeAreaInsets();
   const { session } = useSession();
-  const videoRef = useRef<Video | null>(null);
   const lastSavedRef = useRef(-1);
+  const resumeApplied = useRef(false);
   const [content, setContent] = useState<ContentDetail | null>(null);
   const [activeVideoId, setActiveVideoId] = useState("");
   const [resumeSeconds, setResumeSeconds] = useState(0);
@@ -33,6 +34,9 @@ export function WatchScreen({ route, navigation }: Props) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const player = useVideoPlayer(activeVideoId ? mediaUrl(activeVideoId, "full") : null, (instance) => {
+    instance.timeUpdateEventInterval = 2;
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -97,11 +101,29 @@ export function WatchScreen({ route, navigation }: Props) {
     }
   }, [activeVideoId, session?.token]);
 
-  async function onStatus(status: AVPlaybackStatus) {
-    if (!status.isLoaded) return;
-    if (status.positionMillis != null) await saveProgress(status.positionMillis / 1000);
-    if (status.didJustFinish) await saveProgress((status.durationMillis ?? 0) / 1000, true);
-  }
+  useEffect(() => {
+    player.loop = content?.contentType === "VIDEO";
+    if (paused) player.pause();
+    else player.play();
+  }, [content?.contentType, paused, player]);
+
+  useEffect(() => {
+    resumeApplied.current = false;
+  }, [activeVideoId]);
+
+  useEffect(() => {
+    if (!activeVideoId || resumeApplied.current || resumeSeconds <= 0) return;
+    player.currentTime = resumeSeconds;
+    resumeApplied.current = true;
+  }, [activeVideoId, player, resumeSeconds]);
+
+  useEventListener(player, "timeUpdate", ({ currentTime }) => {
+    void saveProgress(currentTime);
+  });
+
+  useEventListener(player, "playToEnd", () => {
+    void saveProgress(player.duration || resumeSeconds, true);
+  });
 
   async function toggleBookmark() {
     if (!session?.token) return;
@@ -110,11 +132,21 @@ export function WatchScreen({ route, navigation }: Props) {
         await api(`/api/v1/bookmarks/${contentId}`, { method: "DELETE", token: session.token });
         setBookmarked(false);
         setMessage("Removed from saved lessons.");
-      } else {
-        await api("/api/v1/bookmarks", { method: "POST", token: session.token, body: { contentId } });
-        setBookmarked(true);
-        setMessage("Saved for later.");
+        return;
       }
+      const videoId = content?.contentType === "COURSE"
+        ? content.modules?.[0]?.lessons?.[0]?.videoContentId ?? contentId
+        : contentId;
+      await promptSaveToPlaylist({
+        token: session.token,
+        videoContentId: videoId,
+        onBookmarked: async () => {
+          await api("/api/v1/bookmarks", { method: "POST", token: session.token, body: { contentId } });
+          setBookmarked(true);
+        },
+        onMessage: setMessage,
+        onError: setMessage,
+      });
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Bookmark failed");
     }
@@ -138,27 +170,17 @@ export function WatchScreen({ route, navigation }: Props) {
   return (
     <View style={styles.root}>
       {activeVideoId ? (
-        <Video
-          ref={videoRef}
+        <VideoView
           style={StyleSheet.absoluteFill}
-          source={{ uri: mediaUrl(activeVideoId) }}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay={!paused}
-          isLooping={content.contentType === "VIDEO"}
-          onPlaybackStatusUpdate={(status) => { void onStatus(status); }}
-          onLoad={async () => {
-            if (resumeSeconds > 0 && videoRef.current) {
-              await videoRef.current.setPositionAsync(resumeSeconds * 1000);
-            }
-          }}
+          player={player}
+          contentFit="cover"
+          nativeControls={false}
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.centered]}>
           <EmptyState>This content is unavailable.</EmptyState>
         </View>
       )}
-
-      <LinearishScrim />
 
       <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaused((value) => !value)} />
 
@@ -219,10 +241,7 @@ export function WatchScreen({ route, navigation }: Props) {
                     style={[styles.lesson, lesson.videoContentId === activeVideoId ? styles.lessonOn : null]}
                     onPress={() => {
                       void (async () => {
-                        const status = await videoRef.current?.getStatusAsync();
-                        if (status?.isLoaded && status.positionMillis != null) {
-                          await saveProgress(status.positionMillis / 1000, true);
-                        }
+                        await saveProgress(player.currentTime, true);
                         setActiveVideoId(lesson.videoContentId);
                         setPaused(false);
                       })();

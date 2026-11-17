@@ -7,9 +7,11 @@ export type OwnedContent = {
   contentId: string;
   contentType: string;
   title: string;
+  description?: string | null;
   status: string;
   updatedAt: string;
   publishedAt: string | null;
+  hasMedia?: boolean;
 };
 
 export const contentApi = {
@@ -27,14 +29,26 @@ export const contentApi = {
     api<{ status: string }>(`/api/v1/videos/${contentId}/publish`, { method: "POST", token }),
   takedown: (token: string, contentId: string) =>
     api<{ status: string }>(`/api/v1/videos/${contentId}/takedown`, { method: "POST", token }),
+  deleteVideo: (token: string, contentId: string) =>
+    api<{ status: string }>(`/api/v1/videos/${contentId}`, { method: "DELETE", token }),
   createCourse: (token: string, title: string) =>
     api<{ contentId: string }>("/api/v1/courses", { method: "POST", token, body: { title } }),
   updateCourse: (token: string, contentId: string, title: string) =>
     api(`/api/v1/courses/${contentId}`, { method: "PATCH", token, body: { title } }),
   addModule: (token: string, contentId: string, title: string, position: number) =>
     api<{ moduleId: string }>(`/api/v1/courses/${contentId}/modules`, { method: "POST", token, body: { title, position } }),
-  addLesson: (token: string, moduleId: string, body: { title: string; position: number; videoContentId: string }) =>
-    api(`/api/v1/modules/${moduleId}/lessons`, { method: "POST", token, body }),
+  addLesson: (token: string, moduleId: string, body: { title?: string; position: number; videoContentId: string }) =>
+    api<{ lessonId: string }>(`/api/v1/modules/${moduleId}/lessons`, { method: "POST", token, body }),
+  removeLesson: (token: string, moduleId: string, lessonId: string) =>
+    api<{ status: string }>(`/api/v1/modules/${moduleId}/lessons/${lessonId}`, { method: "DELETE", token }),
+  addVideoToCourse: (token: string, courseContentId: string, videoContentId: string) =>
+    api<{ lessonId: string; moduleId: string; position: number }>(`/api/v1/courses/${courseContentId}/videos`, {
+      method: "POST",
+      token,
+      body: { videoContentId },
+    }),
+  deleteCourse: (token: string, contentId: string) =>
+    api<{ status: string }>(`/api/v1/courses/${contentId}`, { method: "DELETE", token }),
   publishCourse: (token: string, contentId: string) =>
     api<{ status: string }>(`/api/v1/courses/${contentId}/publish`, { method: "POST", token }),
 };

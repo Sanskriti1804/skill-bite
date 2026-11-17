@@ -35,6 +35,12 @@ export async function api<T>(path: string, options: { method?: string; token?: s
   return payload as T;
 }
 
-export function mediaUrl(videoContentId: string): string {
-  return `${getApiBase()}/api/v1/videos/${videoContentId}/media`;
+export function mediaUrl(videoContentId: string, quality: "feed" | "full" = "feed"): string {
+  return `${getApiBase()}/api/v1/videos/${videoContentId}/media?quality=${quality}`;
+}
+
+/** Prefer CDN URL from the feed payload; fall back to API redirect/proxy. */
+export function playbackSource(item: { contentId: string; mediaUrl?: string | null }, quality: "feed" | "full" = "feed"): string {
+  if (item.mediaUrl) return item.mediaUrl;
+  return mediaUrl(item.contentId, quality);
 }

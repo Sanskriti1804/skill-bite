@@ -12,6 +12,7 @@ export function createAdminService(access: Access) {
         items: items.map((user) => ({
           userId: user.userId,
           email: user.emailNormalized,
+          username: user.usernameNormalized,
           displayName: user.displayName,
           role: user.role.code,
           accountStatus: user.accountStatus,
@@ -117,7 +118,14 @@ export function createAdminService(access: Access) {
     async me(userId: string) {
       const user = await prisma.appUser.findUnique({ where: { userId }, include: { role: true } });
       if (!user) throw new HttpError(401, "unauthorized", "Authentication required");
-      return { userId: user.userId, email: user.emailNormalized, displayName: user.displayName, role: user.role.code, accountStatus: user.accountStatus };
+      return {
+        userId: user.userId,
+        email: user.emailNormalized,
+        username: user.usernameNormalized,
+        displayName: user.displayName,
+        role: user.role.code,
+        accountStatus: user.accountStatus,
+      };
     },
     async switchRole(userId: string, role: unknown, roleId: (code: string) => Promise<string>) {
       const next = role === "USER" || role === "CREATOR" ? role : "";

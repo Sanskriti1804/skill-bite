@@ -14,7 +14,7 @@ type Props = {
 export function IconButton({ icon, label, onPress, active, tone = "dark", size = 26 }: Props) {
   const color =
     tone === "accent" ? colors.accent
-      : tone === "light" ? colors.feedText
+      : tone === "light" ? (active ? colors.accentAlt : "#FFFFFF")
         : active ? colors.accent : colors.ink;
 
   return (
@@ -28,10 +28,10 @@ export function IconButton({ icon, label, onPress, active, tone = "dark", size =
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", gap: 4, minWidth: 56 },
+  wrap: { alignItems: "center", gap: 2, width: 52 },
   circle: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
@@ -40,13 +40,18 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   circleLight: {
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderColor: "transparent",
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderColor: "rgba(255,255,255,0.35)",
   },
   circleActive: {
     backgroundColor: colors.accentSoft,
     borderColor: colors.accent,
   },
-  label: { fontSize: 12, fontFamily: font.medium, fontWeight: "600", color: colors.inkMuted },
-  labelLight: { color: colors.feedMuted },
+  label: { fontSize: 11, fontFamily: font.medium, fontWeight: "600", color: colors.inkMuted },
+  labelLight: {
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
 });

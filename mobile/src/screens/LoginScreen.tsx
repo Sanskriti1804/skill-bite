@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
   const { setSession } = useSession();
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,7 +26,7 @@ export function LoginScreen({ navigation }: Props) {
     try {
       const result = await api<{ accessToken: string; refreshToken: string }>("/api/v1/auth/login", {
         method: "POST",
-        body: { email: email.trim(), password },
+        body: { emailOrUsername: emailOrUsername.trim(), password },
       });
       let me = await api<Me>("/api/v1/me", { token: result.accessToken });
       if (me.role === "USER") {
@@ -60,7 +60,7 @@ export function LoginScreen({ navigation }: Props) {
         </Pressable>
       )}
     >
-      <Field label="Email" value={email} onChangeText={setEmail} />
+      <Field label="Email or username" value={emailOrUsername} onChangeText={setEmailOrUsername} />
       <Field label="Password" value={password} onChangeText={setPassword} secure />
 
       {error ? <Banner>{error}</Banner> : null}

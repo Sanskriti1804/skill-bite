@@ -1,6 +1,7 @@
 import type { Access } from "./access.js";
 import { HttpError } from "../errors.js";
 import { hashPassword, randomToken, sha256, signAccessToken, verifyMissingPassword, verifyPassword } from "../security.js";
+import { normalizeUsername, slugFromIdentity } from "../username.js";
 
 function passwordOk(password: unknown): password is string {
   return typeof password === "string" && password.length >= 8;
@@ -11,22 +12,46 @@ function normalizeEmail(email: unknown): string {
   return email.trim().toLowerCase();
 }
 
+async function allocateUsername(
+  prisma: Access["prisma"],
+  preferred: string,
+): Promise<string> {
+  let candidate = preferred.slice(0, 24);
+  for (let i = 0; i < 20; i += 1) {
+    const taken = await prisma.appUser.findUnique({ where: { usernameNormalized: candidate } });
+    if (!taken) return candidate;
+    const suffix = String(i + 2);
+    candidate = `${preferred.slice(0, Math.max(3, 24 - suffix.length - 1))}_${suffix}`;
+  }
+  return `user_${randomToken().slice(0, 12)}`;
+}
+
 export function createAuthService(access: Access) {
   const { prisma, config, deps, roleId, issueSession } = access;
 
   return {
-    async register(body: { email?: unknown; password?: unknown; displayName?: unknown; role?: unknown }) {
+    async register(body: {
+      email?: unknown;
+      password?: unknown;
+      displayName?: unknown;
+      username?: unknown;
+      role?: unknown;
+    }) {
       const email = normalizeEmail(body.email);
       if (!passwordOk(body.password)) throw new HttpError(400, "validation", "Password is too weak");
       const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
       if (!displayName) throw new HttpError(400, "validation", "Display name is required");
+      const username = normalizeUsername(body.username);
       const roleCode = body.role === "CREATOR" ? "CREATOR" : body.role === "USER" ? "USER" : "";
       if (!roleCode) throw new HttpError(400, "validation", "Role must be USER or CREATOR");
-      const existing = await prisma.appUser.findUnique({ where: { emailNormalized: email } });
-      if (existing) throw new HttpError(409, "conflict", "Email is already registered");
+      const existingEmail = await prisma.appUser.findUnique({ where: { emailNormalized: email } });
+      if (existingEmail) throw new HttpError(409, "conflict", "Email is already registered");
+      const existingUsername = await prisma.appUser.findUnique({ where: { usernameNormalized: username } });
+      if (existingUsername) throw new HttpError(409, "conflict", "Username is already taken");
       const user = await prisma.appUser.create({
         data: {
           emailNormalized: email,
+          usernameNormalized: username,
           passwordHash: await hashPassword(body.password, config),
           displayName,
           accountStatus: "ACTIVE",
@@ -59,10 +84,15 @@ export function createAuthService(access: Access) {
       return { verified: true as const };
     },
 
-    async login(emailRaw: unknown, password: unknown) {
-      const email = typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : "";
+    async login(emailOrUsernameRaw: unknown, password: unknown) {
+      const identifier = typeof emailOrUsernameRaw === "string" ? emailOrUsernameRaw.trim().toLowerCase() : "";
       const presented = typeof password === "string" ? password : "";
-      const user = email ? await prisma.appUser.findUnique({ where: { emailNormalized: email } }) : null;
+      let user = null;
+      if (identifier.includes("@")) {
+        user = await prisma.appUser.findUnique({ where: { emailNormalized: identifier } });
+      } else if (identifier) {
+        user = await prisma.appUser.findUnique({ where: { usernameNormalized: identifier } });
+      }
       if (!user?.passwordHash) {
         await verifyMissingPassword(presented, config);
         throw new HttpError(401, "unauthorized", "Invalid email or password");
@@ -162,9 +192,11 @@ export function createAuthService(access: Access) {
           userId = byEmail.userId;
           await prisma.authIdentity.create({ data: { userId, provider: "google", providerUserId: identity.subject } });
         } else {
+          const username = await allocateUsername(prisma, slugFromIdentity(email.split("@")[0] ?? "user"));
           const created = await prisma.appUser.create({
             data: {
               emailNormalized: email,
+              usernameNormalized: username,
               displayName: email,
               accountStatus: "ACTIVE",
               emailVerifiedAt: new Date(),
@@ -178,6 +210,19 @@ export function createAuthService(access: Access) {
       const user = await prisma.appUser.findUnique({ where: { userId } });
       if (!user || user.accountStatus !== "ACTIVE") throw new HttpError(403, "forbidden", "Account is not active");
       return issueSession(user.userId);
+    },
+
+    async updateUsername(userId: string, usernameRaw: unknown) {
+      const username = normalizeUsername(usernameRaw);
+      const existing = await prisma.appUser.findUnique({ where: { usernameNormalized: username } });
+      if (existing && existing.userId !== userId) {
+        throw new HttpError(409, "conflict", "Username is already taken");
+      }
+      const user = await prisma.appUser.update({
+        where: { userId },
+        data: { usernameNormalized: username },
+      });
+      return { username: user.usernameNormalized };
     },
   };
 }

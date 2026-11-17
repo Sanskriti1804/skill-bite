@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { StatusBar, StyleSheet } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { StatusBar, StyleSheet, View } from "react-native";
 import { useFonts, Quicksand_600SemiBold } from "@expo-google-fonts/quicksand";
 import {
   Nunito_400Regular,
@@ -21,6 +21,7 @@ void SplashScreenNative.preventAutoHideAsync().catch(() => undefined);
 export default function App() {
   const [booting, setBooting] = useState(true);
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const [appReady, setAppReady] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     Quicksand_600SemiBold,
     Nunito_400Regular,
@@ -29,35 +30,59 @@ export default function App() {
     Nunito_800ExtraBold,
   });
 
+  const fontsReady = fontsLoaded || Boolean(fontError);
+
   useEffect(() => {
     let active = true;
-    async function boot() {
-      const [done] = await Promise.all([
-        loadOnboardingDone(),
-        SplashScreenNative.hideAsync().catch(() => undefined),
-      ]);
-      if (!active || (!fontsLoaded && !fontError)) return;
+    async function prepare() {
+      const done = await loadOnboardingDone();
+      if (!active) return;
       setOnboardingDone(done);
-      setBooting(false);
+      if (fontsReady) setAppReady(true);
     }
-    void boot();
+    void prepare();
     return () => {
       active = false;
     };
-  }, [fontsLoaded, fontError]);
+  }, [fontsReady]);
+
+  useEffect(() => {
+    if (fontsReady) setAppReady(true);
+  }, [fontsReady]);
+
+  // Safety: never stick on a blank frame if fonts hang.
+  useEffect(() => {
+    const timer = setTimeout(() => setAppReady(true), 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const onRootLayout = useCallback(() => {
+    void SplashScreenNative.hideAsync().catch(() => undefined);
+  }, []);
+
+  const finishBoot = useCallback(() => {
+    setBooting(false);
+  }, []);
+
+  if (!appReady) {
+    // Keep the native splash up; cream fill avoids a black flash if it already hid.
+    return <View style={styles.root} />;
+  }
 
   return (
     <SafeAreaProvider style={styles.root}>
-      <SessionProvider>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-        {booting ? (
-          <SplashScreen onFinished={() => undefined} />
-        ) : !onboardingDone ? (
-          <OnboardingScreen onDone={() => setOnboardingDone(true)} />
-        ) : (
-          <AppNavigation />
-        )}
-      </SessionProvider>
+      <View style={styles.root} onLayout={onRootLayout}>
+        <SessionProvider>
+          <StatusBar barStyle="dark-content" />
+          {booting ? (
+            <SplashScreen onFinished={finishBoot} />
+          ) : !onboardingDone ? (
+            <OnboardingScreen onDone={() => setOnboardingDone(true)} />
+          ) : (
+            <AppNavigation />
+          )}
+        </SessionProvider>
+      </View>
     </SafeAreaProvider>
   );
 }

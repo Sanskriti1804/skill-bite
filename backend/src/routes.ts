@@ -37,7 +37,9 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
     res.status(200).json(await auth.verifyEmail(token));
   }));
   router.post("/auth/login", asyncHandler(async (req, res) => {
-    res.status(200).json(await auth.login(body(req).email, body(req).password));
+    const payload = body(req);
+    const emailOrUsername = payload.emailOrUsername ?? payload.email;
+    res.status(200).json(await auth.login(emailOrUsername, payload.password));
   }));
   router.post("/auth/password-reset", asyncHandler(async (req, res) => {
     res.status(200).json(await auth.startReset(body(req).email));
@@ -62,6 +64,10 @@ export function createApiRouter(config: AppConfig, deps: ApiDeps): Router {
   router.get("/me", asyncHandler(async (req, res) => {
     const session = await requireAuth(req);
     res.status(200).json(await admin.me(session.userId));
+  }));
+  router.patch("/me/username", asyncHandler(async (req, res) => {
+    const session = await requireAuth(req);
+    res.status(200).json(await auth.updateUsername(session.userId, body(req).username));
   }));
   router.get("/me/content", asyncHandler(async (req, res) => {
     const session = await requireAuth(req);

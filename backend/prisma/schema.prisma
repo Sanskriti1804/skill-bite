@@ -17,16 +17,17 @@ model Role {
 }
 
 model AppUser {
-  userId          String    @id @default(uuid()) @map("user_id") @db.Uuid
-  roleId          String    @map("role_id") @db.Uuid
-  emailNormalized String    @unique @map("email_normalized")
-  passwordHash    String?   @map("password_hash")
-  displayName     String    @map("display_name")
-  accountStatus   String    @map("account_status")
-  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  userId             String    @id @default(uuid()) @map("user_id") @db.Uuid
+  roleId             String    @map("role_id") @db.Uuid
+  emailNormalized    String    @unique @map("email_normalized")
+  usernameNormalized String    @unique @map("username_normalized")
+  passwordHash       String?   @map("password_hash")
+  displayName        String    @map("display_name")
+  accountStatus      String    @map("account_status")
+  emailVerifiedAt    DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   role                    Role                     @relation(fields: [roleId], references: [roleId], onDelete: Restrict, onUpdate: Restrict)
   identities              AuthIdentity[]

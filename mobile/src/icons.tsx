@@ -45,6 +45,13 @@ export const icons = {
   createActive: "add-circle",
   explore: "compass-outline",
   exploreActive: "compass",
+  like: "heart-outline",
+  likeActive: "heart",
+  comment: "chatbubble-outline",
+  mute: "volume-mute",
+  unmute: "volume-high",
+  eye: "eye-outline",
+  chevronDown: "chevron-down",
 } as const satisfies Record<string, IconName>;
 
 export type AppIcon = keyof typeof icons;

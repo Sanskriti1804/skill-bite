@@ -12,14 +12,24 @@ export function SplashScreen({ onFinished }: Props) {
   const logo = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      onFinished?.();
+    };
+
     Animated.timing(logo, {
       toValue: 1,
       duration: 420,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
+
+    const timer = setTimeout(finish, 900);
     return () => {
-      onFinished?.();
+      clearTimeout(timer);
+      finish();
     };
   }, [logo, onFinished]);
 

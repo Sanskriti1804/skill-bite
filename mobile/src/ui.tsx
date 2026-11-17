@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, lineHeight: 24, fontFamily: font.bold, fontWeight: "700", color: colors.ink },
   dialogBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(196,54,112,0.35)",
     justifyContent: "center",
     padding: space.lg,

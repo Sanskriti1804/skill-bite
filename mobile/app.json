@@ -11,11 +11,6 @@
       "web"
     ],
     "icon": "./assets/App_Logo.png",
-    "splash": {
-      "image": "./assets/App_Logo.png",
-      "backgroundColor": "#FBF4EB",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.skillbite.app"
@@ -30,7 +25,17 @@
     "scheme": "skillbite",
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FBF4EB",
+          "image": "./assets/App_Logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-video"
     ]
   }
 }

@@ -13,6 +13,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 
 export function RegisterScreen({ navigation }: Props) {
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -22,6 +23,11 @@ export function RegisterScreen({ navigation }: Props) {
   async function submit() {
     setError("");
     setMessage("");
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(normalizedUsername)) {
+      setError("Username must be 3–24 characters: letters, numbers, and underscores only");
+      return;
+    }
     if (password.length < 8) {
       setError("Password is too weak");
       return;
@@ -34,6 +40,7 @@ export function RegisterScreen({ navigation }: Props) {
           email: email.trim(),
           password,
           displayName: displayName.trim(),
+          username: normalizedUsername,
           role: "CREATOR",
         },
       });
@@ -59,6 +66,12 @@ export function RegisterScreen({ navigation }: Props) {
       )}
     >
       <Field label="Display name" value={displayName} onChangeText={setDisplayName} />
+      <Field
+        label="Username"
+        value={username}
+        onChangeText={setUsername}
+        hint="Unique. 3–24 chars: letters, numbers, underscore."
+      />
       <Field label="Email" value={email} onChangeText={setEmail} />
       <Field label="Password" value={password} onChangeText={setPassword} secure hint="At least 8 characters." />
 

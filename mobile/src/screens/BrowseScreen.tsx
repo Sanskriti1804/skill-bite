@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  type ViewToken,
+  type ListViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
@@ -18,10 +16,11 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api } from "../api";
 import { AppLogo } from "../components/AppLogo";
 import { ShortFeedCard, feedPageHeight } from "../components/ShortFeedCard";
+import { promptSaveToPlaylist } from "../creator/saveToPlaylist";
 import { Icon } from "../icons";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
-import type { Category, ContentItem } from "../types";
+import type { ContentItem } from "../types";
 import { Banner, EmptyState, LoadingState } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "../navigation";
 
@@ -30,53 +29,42 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const TAB_BAR = 68;
-
 export function BrowseScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { session } = useSession();
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
-  const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<ContentItem[]>([]);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [pageHeight, setPageHeight] = useState(() => feedPageHeight(70));
   const lastSaved = useRef<Record<string, number>>({});
-  const pageHeight = feedPageHeight(TAB_BAR + insets.bottom);
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const params = new URLSearchParams({ sort: "newest" });
-      if (query.trim()) params.set("q", query.trim());
-      if (category) params.set("category", category);
-      const [content, cats, saved] = await Promise.all([
-        api<{ items: ContentItem[] }>(`/api/v1/content?${params.toString()}`),
-        api<{ items: Category[] }>("/api/v1/categories"),
+      const [content, saved] = await Promise.all([
+        api<{ items: ContentItem[] }>("/api/v1/content?sort=random"),
         session?.token
           ? api<{ items: { contentId: string }[] }>("/api/v1/me/bookmarks", { token: session.token })
           : Promise.resolve({ items: [] as { contentId: string }[] }),
       ]);
-      setItems(content.items);
-      setCategories(cats.items);
+      setItems(content.items.filter((item) => item.contentType === "VIDEO"));
       setBookmarks(new Set(saved.items.map((item) => item.contentId)));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Content could not be loaded");
     } finally {
       setLoading(false);
     }
-  }, [category, query, session?.token]);
+  }, [session?.token]);
 
   useEffect(() => {
     setLoading(true);
     void load();
   }, [load]);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
     const first = viewableItems[0];
     if (first?.index != null) setActiveIndex(first.index);
   }).current;
@@ -95,11 +83,18 @@ export function BrowseScreen({ navigation }: Props) {
           return next;
         });
         setToast("Removed from saved lessons.");
-      } else {
-        await api("/api/v1/bookmarks", { method: "POST", token: session.token, body: { contentId } });
-        setBookmarks((current) => new Set(current).add(contentId));
-        setToast("Saved for later.");
+        return;
       }
+      await promptSaveToPlaylist({
+        token: session.token,
+        videoContentId: contentId,
+        onBookmarked: async () => {
+          await api("/api/v1/bookmarks", { method: "POST", token: session.token, body: { contentId } });
+          setBookmarks((current) => new Set(current).add(contentId));
+        },
+        onMessage: setToast,
+        onError: setToast,
+      });
     } catch (caught) {
       setToast(caught instanceof Error ? caught.message : "Could not update bookmark");
     }
@@ -123,77 +118,53 @@ export function BrowseScreen({ navigation }: Props) {
       });
       lastSaved.current[contentId] = position;
     } catch {
-      // Quiet failure on feed; Watch screen shows persistent warning.
+      // Quiet failure on feed.
     }
   }
 
   return (
-    <View style={styles.root}>
-      <View style={[styles.topBar, { paddingTop: insets.top + space.sm }]}>
-        <View style={styles.headerSide} />
+    <View
+      style={styles.root}
+      onLayout={(event) => {
+        const next = Math.round(event.nativeEvent.layout.height);
+        if (next > 0 && next !== pageHeight) setPageHeight(next);
+      }}
+    >
+      <View style={[styles.topBar, { paddingTop: insets.top + space.sm }]} pointerEvents="box-none">
         <View style={styles.brandRow}>
           <AppLogo size={40} />
           <Text style={styles.brand}>SkillBite</Text>
         </View>
-        <Pressable style={styles.searchBtn} onPress={() => setSearchOpen((value) => !value)}>
-          <Icon name="search" size={22} color={colors.feedText} />
-        </Pressable>
-      </View>
-
-      <View style={[styles.categoryWrap, { paddingTop: insets.top + 56 }]}>
-        <FlatList
-          horizontal
-          data={[{ slug: "", name: "All" }, ...categories]}
-          keyExtractor={(item) => item.slug || "all"}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingHorizontal: space.lg, paddingVertical: 8 }}
-          renderItem={({ item }) => {
-            const selected = category === item.slug;
-            return (
-              <Pressable
-                onPress={() => setCategory(item.slug)}
-                style={[styles.chip, selected ? styles.chipOn : null]}
-              >
-                <Text style={[styles.chipText, selected ? styles.chipTextOn : null]}>{item.name}</Text>
-              </Pressable>
-            );
-          }}
-        />
-        {searchOpen ? (
-          <View style={styles.searchPanelInline}>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search shorts and playlists"
-              placeholderTextColor={colors.feedMuted}
-              style={styles.searchInput}
-              autoCapitalize="none"
-            />
-          </View>
-        ) : null}
       </View>
 
       {toast ? (
-        <View style={styles.toast}>
+        <View style={[styles.toast, { top: insets.top + 64 }]}>
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       ) : null}
-      {error ? <View style={styles.errorWrap}><Banner>{error}</Banner></View> : null}
+      {error ? (
+        <View style={[styles.errorWrap, { top: insets.top + 72 }]}>
+          <Banner>{error}</Banner>
+        </View>
+      ) : null}
       {loading ? <LoadingState /> : null}
 
       {!loading && !items.length ? (
         <View style={styles.emptyWrap}>
           <Icon name="empty" size={40} color={colors.feedMuted} />
-          <EmptyState>{query || category ? "Nothing in this category." : "No shorts yet. Upload from Create."}</EmptyState>
+          <EmptyState>No shorts yet. Upload from Create.</EmptyState>
         </View>
       ) : null}
 
       <FlatList
         data={items}
+        key={`feed-${pageHeight}`}
         keyExtractor={(item) => item.contentId}
+        style={styles.list}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={pageHeight}
+        snapToAlignment="start"
         decelerationRate="fast"
         disableIntervalMomentum
         getItemLayout={(_, index) => ({ length: pageHeight, offset: pageHeight * index, index })}
@@ -212,7 +183,8 @@ export function BrowseScreen({ navigation }: Props) {
             onOpen={() => navigation.navigate("Watch", { contentId: item.contentId })}
             onToggleBookmark={() => void toggleBookmark(item.contentId)}
             onShare={() => void share(item.contentId)}
-            onProgress={item.contentType === "VIDEO" ? (seconds) => void saveProgress(item.contentId, seconds) : undefined}
+            onComment={() => setToast("Comments coming soon")}
+            onProgress={(seconds) => void saveProgress(item.contentId, seconds)}
           />
         )}
       />
@@ -222,61 +194,21 @@ export function BrowseScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.videoBg },
+  list: { flex: 1 },
   topBar: {
     position: "absolute",
     zIndex: 2,
     left: 0,
     right: 0,
     paddingHorizontal: space.lg,
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
   },
-  headerSide: { width: 44 },
   brandRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   brand: { color: colors.feedText, fontSize: 22, fontFamily: font.display },
-  searchBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  categoryWrap: {
-    position: "absolute",
-    zIndex: 2,
-    left: 0,
-    right: 0,
-  },
-  searchPanelInline: {
-    marginHorizontal: space.lg,
-    marginBottom: space.sm,
-  },
-  searchInput: {
-    minHeight: 44,
-    borderRadius: radii.md,
-    paddingHorizontal: space.md,
-    color: colors.feedText,
-    fontFamily: font.body,
-    backgroundColor: "rgba(251,244,235,0.92)",
-  },
-  chip: {
-    minHeight: 36,
-    paddingHorizontal: 14,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-  },
-  chipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.feedMuted, fontFamily: font.bold, fontWeight: "700", fontSize: 13 },
-  chipTextOn: { color: colors.accentInk },
   toast: {
     position: "absolute",
     zIndex: 3,
     alignSelf: "center",
-    top: 110,
     backgroundColor: colors.accent,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -284,9 +216,10 @@ const styles = StyleSheet.create({
   },
   toastText: {
     color: colors.accentInk,
-    fontFamily: font.bold, fontWeight: "700",
+    fontFamily: font.bold,
+    fontWeight: "700",
     fontSize: 13,
   },
-  errorWrap: { position: "absolute", zIndex: 3, top: 120, left: 16, right: 16 },
+  errorWrap: { position: "absolute", zIndex: 3, left: 16, right: 16 },
   emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
 });

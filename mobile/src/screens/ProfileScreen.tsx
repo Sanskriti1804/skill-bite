@@ -1,13 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, type CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { api } from "../api";
 import { Icon } from "../icons";
 import { contentApi, type OwnedContent } from "../services/content";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
-import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
+import { Banner, EmptyState, Field, LoadingState, Screen, Title } from "../ui";
 import type { MainTabParamList, RootStackParamList } from "../navigation";
 
 type Props = CompositeScreenProps<
@@ -20,8 +21,14 @@ export function ProfileScreen({ navigation }: Props) {
   const [items, setItems] = useState<OwnedContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
+  const [usernameDraft, setUsernameDraft] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setUsernameDraft(profile?.username ?? "");
+  }, [profile?.username]);
 
   const load = useCallback(async () => {
     if (!session?.token) {
@@ -37,7 +44,7 @@ export function ProfileScreen({ navigation }: Props) {
         refreshProfile(),
         contentApi.mine(session.token),
       ]);
-      setItems(result.items);
+      setItems(result.items.filter((item) => item.status !== "REMOVED"));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load profile");
     } finally {
@@ -49,45 +56,68 @@ export function ProfileScreen({ navigation }: Props) {
     void load();
   }, [load]));
 
-  async function manage(item: OwnedContent, action: "publish" | "archive") {
+  async function removeItem(item: OwnedContent) {
     if (!session?.token) return;
     setBusyId(item.contentId);
     setError("");
     try {
       await ensurePublisher();
       if (item.contentType === "COURSE") {
-        const result = action === "publish"
-          ? await contentApi.publishCourse(session.token, item.contentId)
-          : await contentApi.takedown(session.token, item.contentId);
-        setItems((current) => current.map((row) => (
-          row.contentId === item.contentId ? { ...row, status: result.status } : row
-        )));
-        setMessage(action === "publish" ? "Playlist published." : "Playlist archived. Edit is allowed after archive.");
+        await contentApi.deleteCourse(session.token, item.contentId);
+        setItems((current) => current.filter((row) => row.contentId !== item.contentId));
+        setMessage("Playlist deleted.");
         return;
       }
-      const result = action === "publish"
-        ? await contentApi.publishVideo(session.token, item.contentId)
-        : await contentApi.takedown(session.token, item.contentId);
-      setItems((current) => current.map((row) => (
-        row.contentId === item.contentId ? { ...row, status: result.status } : row
-      )));
-      setMessage(action === "publish" ? "Short published to Explore." : "Short archived. Edit is allowed after archive.");
+      await contentApi.deleteVideo(session.token, item.contentId);
+      setItems((current) => current.filter((row) => row.contentId !== item.contentId));
+      setMessage("Short deleted.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not update content");
+      setError(caught instanceof Error ? caught.message : "Could not delete content");
     } finally {
       setBusyId("");
     }
   }
 
-  function confirmArchive(item: OwnedContent) {
+  function confirmDelete(item: OwnedContent) {
     Alert.alert(
-      "Archive this content?",
-      "Archive removes it from Explore. You can edit and publish again afterward. This is not a permanent delete.",
+      item.contentType === "COURSE" ? "Delete playlist?" : "Delete short?",
+      item.contentType === "COURSE"
+        ? "This permanently deletes the playlist. Shorts stay in your library."
+        : `"${item.description || item.title || "Untitled short"}" will be deleted.`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Archive", style: "destructive", onPress: () => void manage(item, "archive") },
+        { text: "Delete", style: "destructive", onPress: () => void removeItem(item) },
       ],
     );
+  }
+
+  async function saveUsername() {
+    if (!session?.token) return;
+    const next = usernameDraft.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(next)) {
+      setError("Username must be 3–24 characters: letters, numbers, and underscores only");
+      return;
+    }
+    if (next === profile?.username) {
+      setMessage("Username is already up to date.");
+      return;
+    }
+    setSavingUsername(true);
+    setError("");
+    setMessage("");
+    try {
+      await api("/api/v1/me/username", {
+        method: "PATCH",
+        token: session.token,
+        body: { username: next },
+      });
+      await refreshProfile();
+      setMessage("Username updated.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update username");
+    } finally {
+      setSavingUsername(false);
+    }
   }
 
   if (!session) {
@@ -99,8 +129,31 @@ export function ProfileScreen({ navigation }: Props) {
     );
   }
 
-  const shorts = items.filter((item) => item.contentType === "VIDEO");
+  const publishedShorts = items.filter((item) => item.contentType === "VIDEO" && item.status === "PUBLISHED");
+  const draftShorts = items.filter((item) => item.contentType === "VIDEO" && item.status !== "PUBLISHED");
   const playlists = items.filter((item) => item.contentType === "COURSE");
+
+  function renderShort(item: OwnedContent) {
+    return (
+      <View key={item.contentId} style={styles.item}>
+        <Pressable
+          style={{ flex: 1, gap: 4 }}
+          onPress={() => navigation.navigate("ShortEditor", { contentId: item.contentId })}
+        >
+          <Text style={styles.itemTitle}>{item.description || item.title || "Untitled short"}</Text>
+          <Text style={styles.itemMeta}>{item.status}</Text>
+        </Pressable>
+        <View style={styles.actions}>
+          <Pressable onPress={() => navigation.navigate("ShortEditor", { contentId: item.contentId })}>
+            <Text style={styles.action}>Edit</Text>
+          </Pressable>
+          <Pressable disabled={busyId === item.contentId} onPress={() => confirmDelete(item)}>
+            <Text style={styles.actionDanger}>Delete</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Screen>
@@ -112,10 +165,28 @@ export function ProfileScreen({ navigation }: Props) {
           </View>
           <View style={styles.info}>
             <Text style={styles.name}>{profile?.displayName ?? "You"}</Text>
-            <Text style={styles.meta}>{profile?.email?.split("@")[0] || "Username"}</Text>
-            <Text style={styles.meta}>{shorts.length} shorts</Text>
-            <Text style={styles.meta}>{playlists.length} playlists</Text>
+            <Text style={styles.meta}>@{profile?.username || "username"}</Text>
+            <Text style={styles.meta}>{publishedShorts.length} published</Text>
+            <Text style={styles.meta}>{draftShorts.length} drafts</Text>
           </View>
+        </View>
+
+        <Text style={styles.section}>Username</Text>
+        <View style={styles.usernameCard}>
+          <Field
+            label="Unique username"
+            value={usernameDraft}
+            onChangeText={setUsernameDraft}
+            hint="Used to sign in. Letters, numbers, underscore."
+          />
+          <Pressable
+            accessibilityRole="button"
+            disabled={savingUsername}
+            style={[styles.usernameSave, savingUsername ? styles.usernameSaveDisabled : null]}
+            onPress={() => void saveUsername()}
+          >
+            <Text style={styles.usernameSaveText}>{savingUsername ? "Saving…" : "Save username"}</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.section}>Library</Text>
@@ -134,69 +205,39 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        <Text style={styles.section}>My shorts</Text>
+        <Text style={styles.section}>Published shorts</Text>
         {loading ? <LoadingState /> : null}
-        {!loading && !shorts.length ? <EmptyState>No shorts yet. Open Create to upload one.</EmptyState> : null}
-        {shorts.length ? <View style={styles.group}>
-        {shorts.map((item) => (
-          <View key={item.contentId} style={styles.item}>
-            <Pressable
-              style={{ flex: 1, gap: 4 }}
-              onPress={() => navigation.navigate("ShortEditor", { contentId: item.contentId })}
-            >
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemMeta}>{item.status}</Text>
-            </Pressable>
-            {item.status !== "PUBLISHED" ? (
-              <View style={styles.actions}>
-                <Pressable onPress={() => navigation.navigate("ShortEditor", { contentId: item.contentId })}>
-                  <Text style={styles.action}>Edit</Text>
-                </Pressable>
-                <Pressable disabled={busyId === item.contentId} onPress={() => void manage(item, "publish")}>
-                  <Text style={styles.action}>Publish</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable disabled={busyId === item.contentId} onPress={() => confirmArchive(item)}>
-                <Text style={styles.actionDanger}>Archive</Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
-        </View> : null}
+        {!loading && !publishedShorts.length ? <EmptyState>No published shorts yet. Publish from Create.</EmptyState> : null}
+        {publishedShorts.length ? <View style={styles.group}>{publishedShorts.map(renderShort)}</View> : null}
+
+        <Text style={styles.section}>Draft shorts</Text>
+        {!loading && !draftShorts.length ? <EmptyState>No drafts here. Save one from Create.</EmptyState> : null}
+        {draftShorts.length ? <View style={styles.group}>{draftShorts.map(renderShort)}</View> : null}
 
         <Text style={styles.section}>My playlists</Text>
         {!loading && !playlists.length ? <EmptyState>No playlists yet. Create one to group shorts.</EmptyState> : null}
-        {playlists.length ? <View style={styles.group}>
-        {playlists.map((item) => (
-          <View key={item.contentId} style={styles.item}>
-            <Pressable
-              style={{ flex: 1, gap: 4 }}
-              onPress={() => navigation.navigate("CourseStudio", { contentId: item.contentId })}
-            >
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemMeta}>{item.status}</Text>
-            </Pressable>
-            {item.status !== "PUBLISHED" ? (
-              <View style={styles.actions}>
-                <Pressable onPress={() => navigation.navigate("CourseStudio", { contentId: item.contentId })}>
-                  <Text style={styles.action}>Edit</Text>
+        {playlists.length ? (
+          <View style={styles.group}>
+            {playlists.map((item) => (
+              <View key={item.contentId} style={styles.item}>
+                <Pressable
+                  style={{ flex: 1, gap: 4 }}
+                  onPress={() => navigation.navigate("CourseStudio", { contentId: item.contentId })}
+                >
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={styles.itemMeta}>{item.status}</Text>
                 </Pressable>
-                <Pressable disabled={busyId === item.contentId} onPress={() => void manage(item, "publish")}>
-                  <Text style={styles.action}>Publish</Text>
-                </Pressable>
+                <View style={styles.actions}>
+                  <Pressable onPress={() => navigation.navigate("CourseStudio", { contentId: item.contentId })}>
+                    <Text style={styles.action}>Edit</Text>
+                  </Pressable>
+                  <Pressable disabled={busyId === item.contentId} onPress={() => confirmDelete(item)}>
+                    <Text style={styles.actionDanger}>Delete</Text>
+                  </Pressable>
+                </View>
               </View>
-            ) : (
-              <Pressable disabled={busyId === item.contentId} onPress={() => confirmArchive(item)}>
-                <Text style={styles.actionDanger}>Archive</Text>
-              </Pressable>
-            )}
+            ))}
           </View>
-        ))}
-        </View> : null}
-
-        {session.role === "ADMIN" ? (
-          <Banner tone="info">Admin tools stay on the web portal.</Banner>
         ) : null}
 
         <Pressable style={styles.actionRow} onPress={() => void signOut()}>
@@ -241,6 +282,26 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontFamily: font.heavy, fontWeight: "800", color: colors.ink },
   meta: { color: colors.inkMuted, fontSize: 13, fontFamily: font.medium, fontWeight: "600" },
   section: { fontSize: 16, fontFamily: font.bold, fontWeight: "700", color: colors.ink },
+  usernameCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: space.lg,
+    gap: space.md,
+  },
+  usernameSave: {
+    minHeight: 48,
+    borderRadius: radii.md,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  usernameSaveDisabled: { opacity: 0.65 },
+  usernameSaveText: {
+    color: colors.accentInk,
+    fontFamily: font.heavy,
+    fontWeight: "800",
+    fontSize: 15,
+  },
   rowLinks: { flexDirection: "row", gap: 8 },
   link: {
     flex: 1,

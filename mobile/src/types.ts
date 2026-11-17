@@ -6,8 +6,12 @@ export type ContentLabel = {
 export type ContentItem = {
   contentId: string;
   title: string;
+  description?: string | null;
   contentType: string;
   publishedAt?: string | null;
+  hasMedia?: boolean;
+  /** Direct CDN URL when available — prefer this over proxying through the API. */
+  mediaUrl?: string | null;
   categories?: ContentLabel[];
   tags?: ContentLabel[];
 };
@@ -68,6 +72,7 @@ export type NotificationItem = {
 export type Me = {
   userId: string;
   email: string;
+  username: string;
   displayName: string;
   role: string;
   accountStatus: string;
