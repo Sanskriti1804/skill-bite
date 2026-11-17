@@ -12,6 +12,7 @@ export type OwnedContent = {
   updatedAt: string;
   publishedAt: string | null;
   hasMedia?: boolean;
+  thumbnailUrl?: string | null;
 };
 
 export const contentApi = {
@@ -31,10 +32,20 @@ export const contentApi = {
     api<{ status: string }>(`/api/v1/videos/${contentId}/takedown`, { method: "POST", token }),
   deleteVideo: (token: string, contentId: string) =>
     api<{ status: string }>(`/api/v1/videos/${contentId}`, { method: "DELETE", token }),
-  createCourse: (token: string, title: string) =>
-    api<{ contentId: string }>("/api/v1/courses", { method: "POST", token, body: { title } }),
-  updateCourse: (token: string, contentId: string, title: string) =>
-    api(`/api/v1/courses/${contentId}`, { method: "PATCH", token, body: { title } }),
+  createCourse: (token: string, title: string, description?: string) =>
+    api<{ contentId: string }>("/api/v1/courses", {
+      method: "POST",
+      token,
+      body: { title, description },
+    }),
+  updateCourse: (token: string, contentId: string, body: { title?: string; description?: string }) =>
+    api(`/api/v1/courses/${contentId}`, { method: "PATCH", token, body }),
+  setCourseVisibility: (token: string, contentId: string, visibility: "public" | "private") =>
+    api<{ status: string }>(`/api/v1/courses/${contentId}/visibility`, {
+      method: "PATCH",
+      token,
+      body: { visibility },
+    }),
   addModule: (token: string, contentId: string, title: string, position: number) =>
     api<{ moduleId: string }>(`/api/v1/courses/${contentId}/modules`, { method: "POST", token, body: { title, position } }),
   addLesson: (token: string, moduleId: string, body: { title?: string; position: number; videoContentId: string }) =>

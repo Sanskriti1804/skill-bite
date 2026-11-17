@@ -52,6 +52,11 @@ export const icons = {
   unmute: "volume-high",
   eye: "eye-outline",
   chevronDown: "chevron-down",
+  grid: "grid-outline",
+  gridActive: "grid",
+  menu: "menu-outline",
+  settings: "settings-outline",
+  more: "ellipsis-horizontal",
 } as const satisfies Record<string, IconName>;
 
 export type AppIcon = keyof typeof icons;

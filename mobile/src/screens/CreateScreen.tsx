@@ -94,8 +94,8 @@ export function CreateScreen({ navigation }: Props) {
             </Pressable>
             <Pressable style={styles.secondaryCard} onPress={() => navigation.navigate("CourseStudio", {})}>
               <Icon name="course" size={22} color={colors.accent} />
-              <Text style={styles.secondaryTitle}>New playlist</Text>
-              <Text style={styles.secondaryMeta}>Organize shorts into sections and ordered topics</Text>
+              <Text style={styles.secondaryTitle}>New course</Text>
+              <Text style={styles.secondaryMeta}>Name it, add shorts, then make it public or private</Text>
             </Pressable>
           </View>
         ) : null}

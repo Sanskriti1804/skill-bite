@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { useIsFocused } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { upsertStudioDraft } from "../../creator/drafts";
 import {
@@ -29,6 +30,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "ShortEditor">;
 
 export function ShortEditorScreen({ navigation, route }: Props) {
   const { session, ensurePublisher } = useSession();
+  const isFocused = useIsFocused();
   const existingId = route.params.contentId;
   const autoPickStarted = useRef(false);
 
@@ -104,7 +106,7 @@ export function ShortEditorScreen({ navigation, route }: Props) {
         kind: "VIDEO",
         updatedAt: new Date().toISOString(),
       });
-      setMessage("Published. Choose a playlist to keep it organized, or skip.");
+      setMessage("Published. Choose a course to keep it organized, or skip.");
       return id;
     }
 
@@ -116,7 +118,7 @@ export function ShortEditorScreen({ navigation, route }: Props) {
       kind: "VIDEO",
       updatedAt: new Date().toISOString(),
     });
-    setMessage("Saved as draft. You can also add it to a playlist.");
+    setMessage("Saved as draft. You can also add it to a course.");
     return id;
   }
 
@@ -131,12 +133,12 @@ export function ShortEditorScreen({ navigation, route }: Props) {
   }
 
   useEffect(() => {
-    if (!previewUri || preparing) {
+    if (!previewUri || preparing || !isFocused) {
       previewPlayer.pause();
       return;
     }
     previewPlayer.play();
-  }, [preparing, previewPlayer, previewUri]);
+  }, [isFocused, preparing, previewPlayer, previewUri]);
 
   useEffect(() => {
     void ensurePublisher().catch((caught) => {

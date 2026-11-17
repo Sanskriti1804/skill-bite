@@ -142,7 +142,7 @@ model VideoDetails {
   sources         String?
 
   content  Content         @relation(fields: [contentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
-  lesson   Lesson?
+  lessons  Lesson[]
   captions VideoCaption[]
   progress VideoProgress[]
 
@@ -176,7 +176,7 @@ model CourseModule {
 model Lesson {
   lessonId       String   @id @default(uuid()) @map("lesson_id") @db.Uuid
   moduleId       String   @map("module_id") @db.Uuid
-  videoContentId String   @unique @map("video_content_id") @db.Uuid
+  videoContentId String   @map("video_content_id") @db.Uuid
   title          String
   position       Int
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -186,6 +186,8 @@ model Lesson {
   video  VideoDetails @relation(fields: [videoContentId], references: [contentId], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([moduleId, position])
+  @@unique([moduleId, videoContentId])
+  @@index([videoContentId])
   @@map("lesson")
 }
 

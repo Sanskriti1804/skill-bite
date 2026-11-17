@@ -9,6 +9,8 @@ import {
 } from "@expo-google-fonts/nunito";
 import * as SplashScreenNative from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { CommentSheetHost } from "./src/components/CommentSheet";
+import { SaveSheetHost } from "./src/components/SaveSheet";
 import { AppNavigation } from "./src/navigation";
 import { loadOnboardingDone } from "./src/onboardingStore";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
@@ -81,6 +83,8 @@ export default function App() {
           ) : (
             <AppNavigation />
           )}
+          <SaveSheetHost />
+          <CommentSheetHost />
         </SessionProvider>
       </View>
     </SafeAreaProvider>

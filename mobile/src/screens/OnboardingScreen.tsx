@@ -43,7 +43,7 @@ const slides: Slide[] = [
   {
     key: "grow",
     title: "Save and grow",
-    body: "Bookmark what matters, resume history, and organize playlists like a creator studio.",
+    body: "Bookmark what matters, resume history, and organize courses like a creator studio.",
     icon: "bookmarkActive",
     accent: colors.warning,
   },

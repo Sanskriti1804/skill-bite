@@ -51,7 +51,7 @@ export function LoginScreen({ navigation }: Props) {
       plain
       eyebrow="Welcome back"
       title="Sign in to continue"
-      subtitle="Pick up your shorts, playlists, and progress in one place."
+      subtitle="Pick up your shorts, courses, and progress in one place."
       footer={(
         <Pressable style={styles.switchPill} onPress={() => navigation.navigate("Register")}>
           <Text style={styles.switchText}>New here?</Text>

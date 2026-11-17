@@ -12,6 +12,9 @@ export type ContentItem = {
   hasMedia?: boolean;
   /** Direct CDN URL when available — prefer this over proxying through the API. */
   mediaUrl?: string | null;
+  /** Still-frame preview for Explore grid tiles. */
+  thumbnailUrl?: string | null;
+  commentCount?: number;
   categories?: ContentLabel[];
   tags?: ContentLabel[];
 };

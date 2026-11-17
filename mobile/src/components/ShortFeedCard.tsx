@@ -13,6 +13,7 @@ type Props = {
   height: number;
   active: boolean;
   bookmarked: boolean;
+  commentCount?: number;
   onOpen: () => void;
   onToggleBookmark: () => void;
   onShare: () => void;
@@ -25,6 +26,7 @@ export function ShortFeedCard({
   height,
   active,
   bookmarked,
+  commentCount = 0,
   onOpen,
   onToggleBookmark,
   onShare,
@@ -47,17 +49,23 @@ export function ShortFeedCard({
   });
 
   useEffect(() => {
-    player.muted = muted;
-  }, [muted, player]);
+    player.muted = muted || !active;
+  }, [active, muted, player]);
 
   useEffect(() => {
     if (!isVideo) return;
-    if (active && !paused) player.play();
-    else player.pause();
+    if (active && !paused) {
+      player.play();
+      return;
+    }
+    player.pause();
   }, [active, isVideo, paused, player]);
 
   useEffect(() => {
-    if (!active) setCaptionExpanded(false);
+    if (!active) {
+      setCaptionExpanded(false);
+      setPaused(false);
+    }
   }, [active]);
 
   useEventListener(player, "timeUpdate", ({ currentTime }) => {
@@ -76,7 +84,7 @@ export function ShortFeedCard({
       ) : (
         <Pressable style={[StyleSheet.absoluteFill, styles.courseSurface]} onPress={onOpen}>
           <Icon name="course" size={64} color={colors.feedMuted} />
-          <Text style={styles.courseHint}>Playlist · tap to open</Text>
+          <Text style={styles.courseHint}>Course · tap to open</Text>
         </Pressable>
       )}
 
@@ -135,7 +143,7 @@ export function ShortFeedCard({
         />
         <IconButton
           icon="comment"
-          label="Comment"
+          label={commentCount > 0 ? String(commentCount) : "Comment"}
           tone="light"
           size={24}
           onPress={() => onComment?.()}

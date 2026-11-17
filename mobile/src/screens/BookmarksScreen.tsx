@@ -5,13 +5,18 @@ import { api } from "../api";
 import { Icon } from "../icons";
 import { useSession } from "../session";
 import { colors, font, radii, space } from "../theme";
-import type { ContentDetail } from "../types";
 import { Banner, EmptyState, LoadingState, Screen, Title } from "../ui";
 import type { RootStackParamList } from "../navigation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Bookmarks">;
 
-type Row = { contentId: string; title: string; contentType?: string };
+type Row = {
+  contentId: string;
+  title: string;
+  description?: string | null;
+  contentType?: string;
+  status?: string;
+};
 
 export function BookmarksScreen({ navigation }: Props) {
   const { session } = useSession();
@@ -29,18 +34,10 @@ export function BookmarksScreen({ navigation }: Props) {
     }
     setError("");
     try {
-      const result = await api<{ items: { contentId: string }[] }>("/api/v1/me/bookmarks", { token: session.token });
-      const rows = await Promise.all(result.items.map(async (item) => {
-        try {
-          const detail = await api<ContentDetail>(`/api/v1/content/${item.contentId}`, { token: session.token });
-          return { contentId: item.contentId, title: detail.title, contentType: detail.contentType };
-        } catch {
-          return { contentId: item.contentId, title: item.contentId };
-        }
-      }));
-      setItems(rows);
+      const result = await api<{ items: Row[] }>("/api/v1/me/bookmarks", { token: session.token });
+      setItems(result.items);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load bookmarks");
+      setError(caught instanceof Error ? caught.message : "Could not load watching list");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -58,17 +55,45 @@ export function BookmarksScreen({ navigation }: Props) {
     setItems((current) => current.filter((item) => item.contentId !== contentId));
   }
 
+  const videos = items.filter((item) => item.contentType !== "COURSE");
+  const playlists = items.filter((item) => item.contentType === "COURSE");
+
+  function renderRow(item: Row) {
+    return (
+      <Pressable
+        key={item.contentId}
+        style={styles.row}
+        onPress={() => navigation.navigate("Watch", { contentId: item.contentId })}
+      >
+        <View style={styles.iconWrap}>
+          <Icon name={item.contentType === "COURSE" ? "course" : "video"} size={20} color={colors.accent} />
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={styles.title} numberOfLines={2}>
+            {item.description || item.title}
+          </Text>
+          <Text style={styles.meta}>
+            {item.contentType === "COURSE" ? "Course" : "Short"}
+          </Text>
+        </View>
+        <Pressable onPress={() => void remove(item.contentId)} hitSlop={12}>
+          <Icon name="bookmarkActive" size={22} color={colors.accent} />
+        </Pressable>
+      </Pressable>
+    );
+  }
+
   return (
     <Screen>
       <View style={styles.headerBar}>
-        <Title>Saved</Title>
+        <Title>Watching list</Title>
         <Pressable style={styles.back} onPress={() => navigation.goBack()}>
           <Icon name="back" size={20} color={colors.ink} />
           <Text style={styles.backText}>Profile</Text>
         </Pressable>
       </View>
-      <Text style={styles.sub}>Bookmarks for quick return — not a recommendation feed.</Text>
-      {!session ? <Banner tone="info">Sign in to see saved lessons.</Banner> : null}
+      <Text style={styles.sub}>Save shorts and courses to watch later.</Text>
+      {!session ? <Banner tone="info">Sign in to see your watching list.</Banner> : null}
       {error ? <Banner>{error}</Banner> : null}
       {loading ? <LoadingState /> : null}
       <ScrollView
@@ -76,25 +101,13 @@ export function BookmarksScreen({ navigation }: Props) {
         contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />}
       >
-        {!loading && session && !items.length ? <EmptyState>No saved lessons yet.</EmptyState> : null}
-        {items.map((item) => (
-          <Pressable
-            key={item.contentId}
-            style={styles.row}
-            onPress={() => navigation.navigate("Watch", { contentId: item.contentId })}
-          >
-            <View style={styles.iconWrap}>
-              <Icon name={item.contentType === "COURSE" ? "course" : "video"} size={20} color={colors.accent} />
-            </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-              <Text style={styles.meta}>{item.contentType ?? "Lesson"}</Text>
-            </View>
-            <Pressable onPress={() => void remove(item.contentId)} hitSlop={12}>
-              <Icon name="bookmarkActive" size={22} color={colors.accent} />
-            </Pressable>
-          </Pressable>
-        ))}
+        {!loading && session && !items.length ? <EmptyState>Nothing saved yet. Add shorts or courses from Home.</EmptyState> : null}
+
+        {playlists.length ? <Text style={styles.section}>Courses</Text> : null}
+        {playlists.map(renderRow)}
+
+        {videos.length ? <Text style={styles.section}>Shorts</Text> : null}
+        {videos.map(renderRow)}
       </ScrollView>
     </Screen>
   );
@@ -104,25 +117,26 @@ const styles = StyleSheet.create({
   headerBar: { minHeight: 44, justifyContent: "center" },
   back: { position: "absolute", left: 0, top: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 6 },
   backText: { color: colors.ink, fontFamily: font.bold, fontWeight: "700" },
-  sub: { color: colors.inkMuted, fontSize: 13, fontFamily: font.body, marginTop: -8 },
+  sub: { color: colors.inkMuted, fontSize: 13, marginTop: -6, marginBottom: 8, fontFamily: font.body },
+  section: { fontSize: 15, fontFamily: font.bold, fontWeight: "700", color: colors.ink, marginTop: 8 },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: colors.surface,
+    padding: space.lg,
     borderRadius: radii.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: space.lg,
   },
   iconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.accentSoft,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.accentSoft,
   },
-  title: { color: colors.ink, fontSize: 16, fontFamily: font.bold, fontWeight: "700" },
+  title: { color: colors.ink, fontFamily: font.bold, fontWeight: "700", fontSize: 15 },
   meta: { color: colors.inkMuted, fontSize: 12, fontFamily: font.medium, fontWeight: "600" },
 });

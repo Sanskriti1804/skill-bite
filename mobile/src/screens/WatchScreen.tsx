@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  AppState,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type AppStateStatus,
+} from "react-native";
 import { useEventListener } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
 import * as Clipboard from "expo-clipboard";
+import { useIsFocused } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api, mediaUrl } from "../api";
 import { IconButton } from "../components/IconButton";
+import { openCommentSheet } from "../creator/commentSheetController";
 import { promptSaveToPlaylist } from "../creator/saveToPlaylist";
 import { Icon } from "../icons";
 import { useSession } from "../session";
@@ -21,6 +32,8 @@ export function WatchScreen({ route, navigation }: Props) {
   const { contentId } = route.params;
   const insets = useSafeAreaInsets();
   const { session } = useSession();
+  const isFocused = useIsFocused();
+  const [appActive, setAppActive] = useState(AppState.currentState === "active");
   const lastSavedRef = useRef(-1);
   const resumeApplied = useRef(false);
   const [content, setContent] = useState<ContentDetail | null>(null);
@@ -37,6 +50,13 @@ export function WatchScreen({ route, navigation }: Props) {
   const player = useVideoPlayer(activeVideoId ? mediaUrl(activeVideoId, "full") : null, (instance) => {
     instance.timeUpdateEventInterval = 2;
   });
+  const canPlay = isFocused && appActive && !paused;
+
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => setAppActive(next === "active");
+    const sub = AppState.addEventListener("change", onChange);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -103,9 +123,9 @@ export function WatchScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     player.loop = content?.contentType === "VIDEO";
-    if (paused) player.pause();
-    else player.play();
-  }, [content?.contentType, paused, player]);
+    if (canPlay) player.play();
+    else player.pause();
+  }, [canPlay, content?.contentType, player]);
 
   useEffect(() => {
     resumeApplied.current = false;
@@ -131,15 +151,13 @@ export function WatchScreen({ route, navigation }: Props) {
       if (bookmarked) {
         await api(`/api/v1/bookmarks/${contentId}`, { method: "DELETE", token: session.token });
         setBookmarked(false);
-        setMessage("Removed from saved lessons.");
+        setMessage("Removed from watching list.");
         return;
       }
-      const videoId = content?.contentType === "COURSE"
-        ? content.modules?.[0]?.lessons?.[0]?.videoContentId ?? contentId
-        : contentId;
       await promptSaveToPlaylist({
         token: session.token,
-        videoContentId: videoId,
+        videoContentId: contentId,
+        contentType: content?.contentType,
         onBookmarked: async () => {
           await api("/api/v1/bookmarks", { method: "POST", token: session.token, body: { contentId } });
           setBookmarked(true);
@@ -212,6 +230,23 @@ export function WatchScreen({ route, navigation }: Props) {
           ) : null}
         </View>
         <View style={styles.rail}>
+          <IconButton
+            icon="comment"
+            label="Comment"
+            tone="light"
+            onPress={() => {
+              if (!session?.token) {
+                setMessage("Sign in to comment.");
+                return;
+              }
+              openCommentSheet({
+                token: session.token,
+                contentId,
+                currentUserId: session.userId,
+                onError: setMessage,
+              });
+            }}
+          />
           <IconButton
             icon={bookmarked ? "bookmarkActive" : "bookmark"}
             label="Save"

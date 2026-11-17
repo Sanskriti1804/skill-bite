@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppState,
   FlatList,
   StyleSheet,
   Text,
   View,
+  type AppStateStatus,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ListViewToken,
@@ -11,11 +13,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import type { CompositeScreenProps } from "@react-navigation/native";
+import { useIsFocused, type CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { api } from "../api";
 import { AppLogo } from "../components/AppLogo";
 import { ShortFeedCard, feedPageHeight } from "../components/ShortFeedCard";
+import { openCommentSheet } from "../creator/commentSheetController";
 import { promptSaveToPlaylist } from "../creator/saveToPlaylist";
 import { Icon } from "../icons";
 import { useSession } from "../session";
@@ -32,6 +35,8 @@ type Props = CompositeScreenProps<
 export function BrowseScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { session } = useSession();
+  const isFocused = useIsFocused();
+  const [appActive, setAppActive] = useState(AppState.currentState === "active");
   const [items, setItems] = useState<ContentItem[]>([]);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,6 +45,13 @@ export function BrowseScreen({ navigation }: Props) {
   const [toast, setToast] = useState("");
   const [pageHeight, setPageHeight] = useState(() => feedPageHeight(70));
   const lastSaved = useRef<Record<string, number>>({});
+  const feedLive = isFocused && appActive;
+
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => setAppActive(next === "active");
+    const sub = AppState.addEventListener("change", onChange);
+    return () => sub.remove();
+  }, []);
 
   const load = useCallback(async () => {
     setError("");
@@ -103,6 +115,26 @@ export function BrowseScreen({ navigation }: Props) {
   async function share(contentId: string) {
     await Clipboard.setStringAsync(`skillbite://watch/${contentId}`);
     setToast("Lesson link copied.");
+  }
+
+  function openComments(contentId: string) {
+    if (!session?.token) {
+      setToast("Sign in to comment.");
+      return;
+    }
+    openCommentSheet({
+      token: session.token,
+      contentId,
+      currentUserId: session.userId,
+      onCountChange: (count) => {
+        setItems((current) =>
+          current.map((item) =>
+            item.contentId === contentId ? { ...item, commentCount: count } : item,
+          ),
+        );
+      },
+      onError: setToast,
+    });
   }
 
   async function saveProgress(contentId: string, seconds: number) {
@@ -178,12 +210,13 @@ export function BrowseScreen({ navigation }: Props) {
           <ShortFeedCard
             item={item}
             height={pageHeight}
-            active={index === activeIndex}
+            active={feedLive && index === activeIndex}
             bookmarked={bookmarks.has(item.contentId)}
+            commentCount={item.commentCount ?? 0}
             onOpen={() => navigation.navigate("Watch", { contentId: item.contentId })}
             onToggleBookmark={() => void toggleBookmark(item.contentId)}
             onShare={() => void share(item.contentId)}
-            onComment={() => setToast("Comments coming soon")}
+            onComment={() => openComments(item.contentId)}
             onProgress={(seconds) => void saveProgress(item.contentId, seconds)}
           />
         )}

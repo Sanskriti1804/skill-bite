@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -24,9 +25,9 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-const GAP = 1;
+const GAP = 0;
 const COLS = 3;
-const TILE_W = (Dimensions.get("window").width - GAP * (COLS - 1)) / COLS;
+const TILE_W = Dimensions.get("window").width / COLS;
 const TILE_H = TILE_W * 1.45;
 
 function formatViews(contentId: string): string {
@@ -38,11 +39,44 @@ function formatViews(contentId: string): string {
   return String(value);
 }
 
-function tileTint(contentId: string): string {
-  const tones = ["#C43670", "#A12E5C", "#8B2450", "#D45A88", "#6E1C40"];
-  let hash = 0;
-  for (let i = 0; i < contentId.length; i += 1) hash = (hash + contentId.charCodeAt(i)) % tones.length;
-  return tones[hash];
+function ExploreTile({
+  item,
+  onPress,
+}: {
+  item: ContentItem;
+  onPress: () => void;
+}) {
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const previewUri = item.thumbnailUrl?.trim() || "";
+  const showPreview = Boolean(previewUri) && !thumbFailed;
+
+  return (
+    <Pressable
+      style={styles.tile}
+      onPress={onPress}
+      android_ripple={{ color: "rgba(255,255,255,0.12)" }}
+    >
+      {showPreview ? (
+        <Image
+          source={{ uri: previewUri }}
+          style={styles.preview}
+          resizeMode="cover"
+          onError={() => setThumbFailed(true)}
+        />
+      ) : null}
+      <View style={styles.scrim} pointerEvents="none" />
+      <View style={styles.playMark} pointerEvents="none">
+        <Icon name="play" size={18} color={colors.feedText} />
+      </View>
+      {item.title ? (
+        <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
+      ) : null}
+      <View style={styles.views} pointerEvents="none">
+        <Icon name="eye" size={12} color={colors.feedText} />
+        <Text style={styles.viewsText}>{formatViews(item.contentId)}</Text>
+      </View>
+    </Pressable>
+  );
 }
 
 export function ExploreScreen({ navigation }: Props) {
@@ -142,20 +176,14 @@ export function ExploreScreen({ navigation }: Props) {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={12}
+        windowSize={7}
+        removeClippedSubviews
         renderItem={({ item }) => (
-          <Pressable
-            style={[styles.tile, { backgroundColor: tileTint(item.contentId) }]}
+          <ExploreTile
+            item={item}
             onPress={() => navigation.navigate("Watch", { contentId: item.contentId })}
-          >
-            <View style={styles.playMark}>
-              <Icon name="play" size={18} color={colors.feedText} />
-            </View>
-            <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
-            <View style={styles.views}>
-              <Icon name="eye" size={12} color={colors.feedText} />
-              <Text style={styles.viewsText}>{formatViews(item.contentId)}</Text>
-            </View>
-          </Pressable>
+          />
         )}
       />
     </View>
@@ -191,7 +219,7 @@ const styles = StyleSheet.create({
   chipText: { color: colors.inkMuted, fontFamily: font.bold, fontWeight: "700", fontSize: 13 },
   chipTextOn: { color: colors.accent },
   bannerWrap: { paddingHorizontal: space.lg },
-  grid: { paddingBottom: 24 },
+  grid: { paddingBottom: 24, backgroundColor: "#111111" },
   row: { gap: GAP, marginBottom: GAP },
   tile: {
     width: TILE_W,
@@ -199,6 +227,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "flex-end",
     padding: 8,
+    backgroundColor: "#111111",
+    borderWidth: 0,
+  },
+  preview: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: TILE_W + 1,
+    height: TILE_H + 1,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.22)",
   },
   playMark: {
     position: "absolute",
@@ -223,6 +264,7 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.45)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    zIndex: 1,
   },
   views: {
     position: "absolute",
@@ -231,6 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    zIndex: 1,
   },
   viewsText: {
     color: colors.feedText,
